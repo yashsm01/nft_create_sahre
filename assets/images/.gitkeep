@@ -1,0 +1,27 @@
+# Place your NFT images here
+
+## Required Images
+
+- `collection.png` - Your collection cover image
+- `nft.png` - Your NFT image
+
+## Sample Images
+
+You can download sample images from:
+- Collection: https://github.com/solana-developers/professional-education/blob/main/labs/metaplex-umi/collection.png
+- NFT: https://github.com/solana-developers/professional-education/blob/main/labs/metaplex-umi/nft.png
+
+## Supported Formats
+
+- PNG (recommended)
+- JPEG/JPG
+- GIF
+- WEBP
+
+## Recommendations
+
+- Use high-quality images (at least 1000x1000 pixels)
+- Keep file sizes reasonable (< 5MB)
+- Use square images for best results
+- Ensure you have rights to use the images
+

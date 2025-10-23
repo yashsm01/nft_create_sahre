@@ -1,0 +1,41 @@
+# Metadata Templates
+
+This directory can be used to store JSON metadata templates for your NFTs.
+
+## Example NFT Metadata
+
+```json
+{
+  "name": "My NFT #1",
+  "symbol": "MYNFT",
+  "description": "This is my amazing NFT",
+  "seller_fee_basis_points": 500,
+  "image": "https://arweave.net/...",
+  "attributes": [
+    {
+      "trait_type": "Background",
+      "value": "Blue"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Legendary"
+    }
+  ],
+  "properties": {
+    "files": [
+      {
+        "uri": "https://arweave.net/...",
+        "type": "image/png"
+      }
+    ],
+    "category": "image",
+    "creators": [
+      {
+        "address": "YourWalletAddress",
+        "share": 100
+      }
+    ]
+  }
+}
+```
+

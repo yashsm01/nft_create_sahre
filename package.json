@@ -1,0 +1,37 @@
+{
+  "name": "solana-nft-metaplex",
+  "version": "1.0.0",
+  "description": "Solana NFT creation and management using Metaplex Token Metadata",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "create:collection": "npx esrun src/scripts/create-collection.ts",
+    "create:nft": "npx esrun src/scripts/create-nft.ts",
+    "verify:nft": "npx esrun src/scripts/verify-nft.ts",
+    "update:nft": "npx esrun src/scripts/update-nft.ts"
+  },
+  "keywords": [
+    "solana",
+    "nft",
+    "metaplex",
+    "blockchain",
+    "web3"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@metaplex-foundation/mpl-token-metadata": "^3.2.1",
+    "@metaplex-foundation/umi": "^0.9.2",
+    "@metaplex-foundation/umi-bundle-defaults": "^0.9.2",
+    "@metaplex-foundation/umi-uploader-irys": "^0.9.2",
+    "@solana-developers/helpers": "^2.5.5",
+    "@solana/web3.js": "^1.95.8",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "esrun": "^3.2.26",
+    "typescript": "^5.7.2"
+  }
+}
+

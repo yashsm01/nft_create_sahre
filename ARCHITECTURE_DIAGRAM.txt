@@ -1,0 +1,208 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                  SOLANA NFT PROJECT - ARCHITECTURE DIAGRAM                    ║
+║                          (Metaplex + Umi Framework)                           ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                                USER INTERFACE                                  │
+│                                                                                │
+│   ┌────────────────┐  ┌────────────────┐  ┌────────────────┐                │
+│   │ npm run        │  │ npm run        │  │ npm run        │                │
+│   │ create:        │  │ create:        │  │ verify:        │                │
+│   │ collection     │  │ nft            │  │ nft            │                │
+│   └────────┬───────┘  └────────┬───────┘  └────────┬───────┘                │
+└────────────┼────────────────────┼────────────────────┼────────────────────────┘
+             │                    │                    │
+             │                    │                    │
+┌────────────▼────────────────────▼────────────────────▼────────────────────────┐
+│                              SCRIPT LAYER                                      │
+│                         (src/scripts/*.ts)                                     │
+│                                                                                │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐                 │
+│  │ create-         │  │ create-nft.ts   │  │ verify-      │                 │
+│  │ collection.ts   │  │                 │  │ nft.ts       │                 │
+│  │                 │  │ • Load config   │  │              │                 │
+│  │ • Load config   │  │ • Setup Umi     │  │ • Verify NFT │                 │
+│  │ • Setup Umi     │  │ • Call service  │  │   in         │                 │
+│  │ • Call service  │  │ • Display       │  │   collection │                 │
+│  │ • Display       │  │   results       │  │              │                 │
+│  └────────┬────────┘  └────────┬────────┘  └──────┬───────┘                 │
+└───────────┼──────────────────────┼───────────────────┼──────────────────────────┘
+            │                      │                   │
+            └──────────────┬───────┴──────────┬────────┘
+                           │                  │
+┌──────────────────────────▼──────────────────▼────────────────────────────────┐
+│                           SERVICE LAYER                                       │
+│                         (src/services/*.ts)                                   │
+│                                                                               │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │                      collection.ts                                    │   │
+│  │  • createCollection(umi, config, cluster)                            │   │
+│  │    → Uploads image & metadata                                        │   │
+│  │    → Creates collection NFT                                          │   │
+│  │    → Returns CollectionCreationResult                                │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                               │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │                          nft.ts                                       │   │
+│  │  • createNFT(umi, config, cluster, collectionAddress?)              │   │
+│  │    → Uploads image & metadata                                        │   │
+│  │    → Creates NFT (optionally in collection)                          │   │
+│  │    → Returns NFTCreationResult                                       │   │
+│  │                                                                       │   │
+│  │  • verifyNFTCollection(umi, nftAddr, collectionAddr, cluster)       │   │
+│  │    → Verifies NFT as part of collection                             │   │
+│  │                                                                       │   │
+│  │  • updateNFT(umi, nftAddr, updateData, cluster, newImagePath?)      │   │
+│  │    → Updates NFT metadata                                            │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                               │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │                        metadata.ts                                    │   │
+│  │  • prepareNFTMetadata(config, imageUri)                             │   │
+│  │  • validateNFTConfig(config)                                         │   │
+│  │  • validateCollectionConfig(config)                                  │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                     │                                         │
+└─────────────────────────────────────┼─────────────────────────────────────────┘
+                                      │
+                    ┌─────────────────┼─────────────────┐
+                    │                 │                 │
+┌───────────────────▼─────────────────▼─────────────────▼───────────────────────┐
+│                             UTILITY LAYER                                      │
+│                            (src/utils/*.ts)                                    │
+│                                                                                │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
+│  │    umi.ts        │  │   uploader.ts    │  │      helpers.ts          │   │
+│  │                  │  │                  │  │                          │   │
+│  │ • createUmi      │  │ • uploadImage()  │  │ • loadKeypair()          │   │
+│  │   Instance()     │  │   - Read file    │  │ • ensureFunding()        │   │
+│  │   - Setup Umi    │  │   - Upload to    │  │ • getExplorerLink()      │   │
+│  │   - Add plugins  │  │     Irys         │  │ • displaySuccess()       │   │
+│  │   - Set identity │  │   - Return URI   │  │ • displayError()         │   │
+│  │                  │  │                  │  │ • validateEnvVar()       │   │
+│  │                  │  │ • uploadMetadata │  │                          │   │
+│  │                  │  │   - Upload JSON  │  │                          │   │
+│  │                  │  │   - Return URI   │  │                          │   │
+│  └──────────────────┘  └──────────────────┘  └──────────────────────────┘   │
+│                                     │                                          │
+└─────────────────────────────────────┼──────────────────────────────────────────┘
+                                      │
+                    ┌─────────────────┼─────────────────┐
+                    │                 │                 │
+┌───────────────────▼─────────────────▼─────────────────▼───────────────────────┐
+│                          EXTERNAL SERVICES                                     │
+│                                                                                │
+│  ┌─────────────────────┐  ┌─────────────────────┐  ┌──────────────────────┐ │
+│  │   Solana Network    │  │   Irys/Arweave      │  │  Metaplex Token      │ │
+│  │                     │  │                     │  │  Metadata Program    │ │
+│  │ • Store NFT onchain │  │ • Permanent storage │  │                      │ │
+│  │ • Execute           │  │ • Images stored     │  │ • Creates metadata   │ │
+│  │   transactions      │  │ • JSON stored       │  │   PDA                │ │
+│  │ • Manage accounts   │  │ • Returns URIs      │  │ • Verifies           │ │
+│  │                     │  │                     │  │   collections        │ │
+│  └─────────────────────┘  └─────────────────────┘  └──────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+
+┌────────────────────────────────────────────────────────────────────────────────┐
+│                        CONFIGURATION & TYPES                                   │
+│                                                                                │
+│  ┌──────────────────────────────┐  ┌──────────────────────────────────────┐  │
+│  │   src/config/constants.ts    │  │       src/types/index.ts             │  │
+│  │                              │  │                                      │  │
+│  │ • DEFAULT_CLUSTER            │  │ • NFTMetadata                        │  │
+│  │ • AIRDROP_AMOUNT             │  │ • NFTConfig                          │  │
+│  │ • COMMITMENT_LEVELS          │  │ • CollectionConfig                   │  │
+│  │ • SUPPORTED_IMAGE_TYPES      │  │ • NFTCreationResult                  │  │
+│  │ • getEnvironmentConfig()     │  │ • CollectionCreationResult           │  │
+│  │ • ASSET_PATHS                │  │ • NFTUpdateData                      │  │
+│  └──────────────────────────────┘  │ • EnvironmentConfig                  │  │
+│                                     └──────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              DATA FLOW EXAMPLE
+                        Creating an NFT in a Collection
+═══════════════════════════════════════════════════════════════════════════════
+
+ 1. User runs: npm run create:nft
+        │
+        ▼
+ 2. create-nft.ts executes
+        │
+        ├─► Load environment config (constants.ts)
+        ├─► Create Solana connection
+        ├─► Load keypair (helpers.ts → loadKeypair)
+        ├─► Ensure funding (helpers.ts → ensureFunding)
+        ├─► Create Umi instance (umi.ts → createUmiInstance)
+        ├─► Define NFT config (types → NFTConfig)
+        └─► Call createNFT() from service
+                │
+                ▼
+ 3. nft.ts → createNFT() executes
+        │
+        ├─► Validate config (metadata.ts → validateNFTConfig)
+        ├─► Upload image (uploader.ts → uploadImage)
+        │      │
+        │      └─► Read file from disk
+        │      └─► Create generic file
+        │      └─► Upload to Irys
+        │      └─► Return image URI
+        │
+        ├─► Upload metadata (uploader.ts → uploadMetadata)
+        │      │
+        │      └─► Create JSON with image URI
+        │      └─► Upload JSON to Irys
+        │      └─► Return metadata URI
+        │
+        ├─► Generate mint keypair
+        ├─► Call Metaplex createNft()
+        │      │
+        │      └─► Creates mint account on Solana
+        │      └─► Creates token account
+        │      └─► Creates metadata PDA
+        │      └─► Mints token
+        │
+        └─► Return NFTCreationResult
+                │
+                ▼
+ 4. Script displays results
+        │
+        ├─► NFT address
+        ├─► Image URI (Arweave)
+        ├─► Metadata URI (Arweave)
+        └─► Explorer link
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            MODULE DEPENDENCIES
+═══════════════════════════════════════════════════════════════════════════════
+
+  Scripts
+     ↓
+  Services  ←─┐
+     ↓        │
+  Utils       │
+     ↓        │
+  Config ─────┘
+  Types  (shared by all layers)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              KEY CHARACTERISTICS
+═══════════════════════════════════════════════════════════════════════════════
+
+✓ Modular           - Each module has single responsibility
+✓ Layered           - Clear separation of concerns
+✓ Type-Safe         - Full TypeScript coverage
+✓ Testable          - Easy to unit test each layer
+✓ Extensible        - Easy to add new features
+✓ Maintainable      - Clean, documented code
+✓ Scalable          - Can handle large operations
+✓ Production-Ready  - Error handling, validation
+
+═══════════════════════════════════════════════════════════════════════════════
+
