@@ -19,8 +19,7 @@ export interface FractionalizeConfig {
  * Result of fractionalization
  */
 export interface FractionalizeResult {
-  vaultAddress: UmiPublicKey;      // Address of the vault holding the NFT
-  shareTokenMint: UmiPublicKey;    // Mint address of share tokens
+  shareTokenMint: string;          // Mint address of share tokens
   totalShares: number;             // Total shares created
   explorerLink: string;            // Explorer link
 }

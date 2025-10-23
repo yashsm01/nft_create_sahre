@@ -52,17 +52,17 @@ async function main() {
     // CUSTOMIZE THIS ARRAY with your recipients!
     const distributions: ShareDistribution[] = [
       {
-        recipient: "RECIPIENT_WALLET_ADDRESS_1", // Replace with actual address
+        recipient: "8vNFrvPuB46CXQyQ8VLUoA2D9yvHQo7NNaTesw4YA8A3", // Replace with actual address
         amount: 10, // Send 10 shares
       },
-      {
-        recipient: "RECIPIENT_WALLET_ADDRESS_2", // Replace with actual address
-        amount: 20, // Send 20 shares
-      },
-      {
-        recipient: "RECIPIENT_WALLET_ADDRESS_3", // Replace with actual address
-        amount: 30, // Send 30 shares
-      },
+      // {
+      //   recipient: "RECIPIENT_WALLET_ADDRESS_2", // Replace with actual address
+      //   amount: 20, // Send 20 shares
+      // },
+      // {
+      //   recipient: "RECIPIENT_WALLET_ADDRESS_3", // Replace with actual address
+      //   amount: 30, // Send 30 shares
+      // },
       // Add more recipients as needed
     ];
 
@@ -97,7 +97,7 @@ async function main() {
     // Distribute shares
     const results = await distributeShares(
       umi,
-      UmiPublicKey(shareTokenMintAddress!),
+      shareTokenMintAddress!,
       distributions,
       envConfig.cluster
     );
