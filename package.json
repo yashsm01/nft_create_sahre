@@ -12,7 +12,11 @@
     "fractionalize:nft": "npx esrun src/scripts/fractionalize-nft.ts",
     "fractionalize:simple": "npx esrun src/scripts/fractionalize-nft-simple.ts",
     "distribute:shares": "npx esrun src/scripts/distribute-shares.ts",
-    "distribute:program": "npx esrun src/scripts/distribute-shares-programmatic.ts"
+    "distribute:program": "npx esrun src/scripts/distribute-shares-programmatic.ts",
+    "product:batch": "npx esrun src/scripts/create-batch-collection.ts",
+    "product:create": "npx esrun src/scripts/create-product-nft.ts",
+    "product:create-batch": "npx esrun src/scripts/create-products-batch.ts",
+    "product:verify": "npx esrun src/scripts/verify-product.ts"
   },
   "keywords": [
     "solana",
