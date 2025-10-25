@@ -23,7 +23,7 @@ export function createUmiInstance(
   const umi = createUmi(rpcEndpoint);
 
   // Convert Solana keypair to Umi-compatible keypair
-  const umiKeypair: KeypairSigner = umi.eddsa.createKeypairFromSecretKey(
+  const umiKeypair = umi.eddsa.createKeypairFromSecretKey(
     keypair.secretKey
   );
 

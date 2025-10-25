@@ -5,18 +5,22 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "create:collection": "npx esrun src/scripts/create-collection.ts",
-    "create:nft": "npx esrun src/scripts/create-nft.ts",
-    "verify:nft": "npx esrun src/scripts/verify-nft.ts",
-    "update:nft": "npx esrun src/scripts/update-nft.ts",
-    "fractionalize:nft": "npx esrun src/scripts/fractionalize-nft.ts",
-    "fractionalize:simple": "npx esrun src/scripts/fractionalize-nft-simple.ts",
-    "distribute:shares": "npx esrun src/scripts/distribute-shares.ts",
-    "distribute:program": "npx esrun src/scripts/distribute-shares-programmatic.ts",
-    "product:batch": "npx esrun src/scripts/create-batch-collection.ts",
-    "product:create": "npx esrun src/scripts/create-product-nft.ts",
-    "product:create-batch": "npx esrun src/scripts/create-products-batch.ts",
-    "product:verify": "npx esrun src/scripts/verify-product.ts"
+    "dev": "npx tsx api/server.ts",
+    "start": "NODE_ENV=production npx tsx api/server.ts",
+    "db:sync": "DB_SYNC=true npx tsx api/server.ts",
+    "db:reset": "DB_SYNC=true DB_FORCE_SYNC=true npx tsx api/server.ts",
+    "create:collection": "npx tsx src/scripts/create-collection.ts",
+    "create:nft": "npx tsx src/scripts/create-nft.ts",
+    "verify:nft": "npx tsx src/scripts/verify-nft.ts",
+    "update:nft": "npx tsx src/scripts/update-nft.ts",
+    "fractionalize:nft": "npx tsx src/scripts/fractionalize-nft.ts",
+    "fractionalize:simple": "npx tsx src/scripts/fractionalize-nft-simple.ts",
+    "distribute:shares": "npx tsx src/scripts/distribute-shares.ts",
+    "distribute:program": "npx tsx src/scripts/distribute-shares-programmatic.ts",
+    "product:batch": "npx tsx src/scripts/create-batch-collection.ts",
+    "product:create": "npx tsx src/scripts/create-product-nft.ts",
+    "product:create-batch": "npx tsx src/scripts/create-products-batch.ts",
+    "product:verify": "npx tsx src/scripts/verify-product.ts"
   },
   "keywords": [
     "solana",
@@ -35,11 +39,26 @@
     "@solana-developers/helpers": "^2.5.5",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.95.8",
-    "dotenv": "^16.4.5"
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "express-validator": "^7.3.0",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.1",
+    "pg": "^8.16.3",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.4",
     "@types/node": "^22.10.2",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "esrun": "^3.2.26",
+    "tsx": "^4.20.6",
     "typescript": "^5.7.2"
   }
 }
