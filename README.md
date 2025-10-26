@@ -1,430 +1,656 @@
-# Solana NFT Platform with Fractionalization
+# Solana Product Tracking & NFT Fractionalization Platform
 
-A **complete, production-ready** TypeScript platform for creating, managing, fractionalizing, and distributing NFTs on Solana. Built with Metaplex Token Metadata, Umi framework, and SPL Token program.
+A **complete, production-ready** TypeScript platform for product tracking, NFT management, and SPL token fractionalization on Solana blockchain. Built with Express.js, PostgreSQL, Metaplex Token Metadata, and SPL Token program.
 
-**Status**: ✅ **FULLY TESTED & OPERATIONAL** on Solana Devnet
+**Status**: ✅ **FULLY OPERATIONAL** on Solana Devnet
+
+---
+
+## 🎯 Overview
+
+This platform combines two powerful blockchain capabilities:
+
+1. **Product Tracking System**: Create a complete NFT hierarchy for product authentication
+   - Product Master NFT → Batch Collection NFT → Individual Item NFTs
+   - Full product lifecycle tracking from manufacturing to end consumer
+   - Blockchain-verified authenticity and provenance
+
+2. **NFT Fractionalization**: Convert NFTs into tradeable share tokens
+   - Split NFTs into fungible SPL tokens
+   - Distribute shares to multiple stakeholders
+   - Track ownership and transfers on-chain
+
+---
 
 ## 🏗️ Architecture
 
-This project follows a modular, service-oriented architecture with clear separation of concerns:
-
 ```
 hotel/
-├── src/
-│   ├── config/           # Configuration and constants
-│   ├── utils/            # Utility functions (Umi setup, uploader, helpers)
-│   ├── services/         # Business logic (collection, NFT, metadata services)
-│   ├── scripts/          # Executable scripts for NFT operations
-│   └── types/            # TypeScript type definitions
-├── assets/
-│   ├── images/           # NFT and collection images
-│   └── metadata/         # Metadata templates
-├── package.json
-├── tsconfig.json
-└── README.md
+├── api/                      # REST API Layer
+│   ├── controllers/          # Request handlers
+│   │   ├── productController.ts
+│   │   ├── batchController.ts
+│   │   ├── itemController.ts
+│   │   └── fractionalizeController.ts
+│   ├── routes/              # API routes with Swagger docs
+│   │   ├── productRoutes.ts
+│   │   ├── batchRoutes.ts
+│   │   ├── itemRoutes.ts
+│   │   └── fractionalizeRoutes.ts
+│   ├── models/              # Database models (Sequelize ORM)
+│   │   ├── Product.ts
+│   │   ├── Batch.ts
+│   │   ├── Item.ts
+│   │   ├── FractionalToken.ts
+│   │   └── ShareTransfer.ts
+│   ├── config/              # Configuration
+│   │   ├── database.ts
+│   │   └── swagger.ts
+│   └── server.ts            # Express server
+├── src/                     # Core Business Logic
+│   ├── services/            # Blockchain services
+│   │   ├── product.ts       # Product/Batch/Item NFT creation
+│   │   └── fractionalize.ts # NFT fractionalization & distribution
+│   ├── types/               # TypeScript interfaces
+│   │   ├── product.ts
+│   │   └── fractionalize.ts
+│   ├── utils/               # Utility functions
+│   │   ├── umi.ts           # Umi instance setup
+│   │   ├── uploader.ts      # Irys uploader
+│   │   └── solana.ts        # Solana utilities
+│   └── config/              # Constants
+├── assets/                  # Images & metadata
+└── package.json
 ```
 
-### Architecture Benefits
+### Key Technologies
 
-- **Modularity**: Each service has a single responsibility
-- **Reusability**: Utilities and services can be imported and used anywhere
-- **Type Safety**: Full TypeScript support with comprehensive types
-- **Maintainability**: Clean code structure makes updates easy
-- **Scalability**: Easy to add new features and NFT operations
+- **Backend**: Express.js + TypeScript
+- **Database**: PostgreSQL with Sequelize ORM
+- **Blockchain**: Solana (Devnet/Mainnet)
+- **NFT Standard**: Metaplex Token Metadata
+- **Token Standard**: SPL Token Program
+- **API Documentation**: Swagger/OpenAPI
+- **File Storage**: Irys (permanent, decentralized)
+
+---
 
 ## 🚀 Features
 
-### NFT Operations
-- ✅ Create NFT Collections
-- ✅ Create individual NFTs (standalone or as part of a collection)
-- ✅ Verify NFTs as part of collections
-- ✅ Update NFT metadata
-- ✅ Upload images and metadata to Irys (permanent storage)
+### 🏭 Product Tracking System
 
-### 🆕 Fractionalization & Distribution
-- ✅ **Fractionalize NFTs** into fungible share tokens
-- ✅ **Automated share creation** (100 shares per NFT)
-- ✅ **CLI-based distribution** (manual transfers)
-- ✅ **Programmatic distribution** (batch transfers to multiple recipients)
-- ✅ **Transaction tracking** and verification
-- ✅ **Ownership percentage** calculations
+#### Three-Tier NFT Hierarchy
 
-### Technical Features
-- ✅ Full TypeScript support with comprehensive types
-- ✅ Environment-based configuration
-- ✅ Comprehensive error handling
-- ✅ Beautiful console output with progress indicators
-- ✅ Production-ready architecture
-- ✅ Complete documentation
+```
+Product Master NFT (Non-Collection)
+    ↓
+Batch Collection NFT (Collection)
+    ↓ (contains multiple)
+Individual Item NFTs (Members)
+```
+
+#### Features
+
+- ✅ **Product Master NFT**: Created automatically when product is registered
+- ✅ **Batch Collection NFT**: Links to product, contains batch information
+- ✅ **Item NFTs**: Individual product units with unique serial numbers
+- ✅ **UUID-based IDs**: Products use UUIDs, GTIN is optional
+- ✅ **Blockchain Explorer Links**: Every NFT includes explorer URL
+- ✅ **Metadata Storage**: Permanent storage on Irys/Arweave
+- ✅ **Full Provenance**: Track product from creation to consumer
+
+#### Data Models
+
+**Product**
+- `id` (UUID) - Primary key
+- `gtin` (optional) - Global Trade Item Number
+- `productName`, `company`, `category`, `model`
+- `nftMintAddress` - Product Master NFT address
+- `nftMetadataUri` - Metadata JSON URI
+- `nftExplorerLink` - Solana Explorer link
+
+**Batch**
+- `id` (UUID) - Primary key
+- `productId` (UUID) - Foreign key to Product
+- `batchName`, `manufacturingFacility`, `productionLine`
+- `nftCollectionAddress` - Batch Collection NFT address
+- `productNftReference` - Link to Product Master NFT
+
+**Item**
+- `id` (UUID) - Primary key
+- `batchId` (UUID) - Foreign key to Batch
+- `serialNumber`, `rfidTag`
+- `nftMintAddress` - Individual Item NFT address
+- `nftMetadataUri` - Metadata JSON URI
+- `status` - Lifecycle status tracking
+
+### 💎 NFT Fractionalization
+
+#### Features
+
+- ✅ **Convert NFTs to Fungible Tokens**: Split any NFT into SPL tokens
+- ✅ **Configurable Shares**: Define total supply and share distribution
+- ✅ **Token Metadata**: Add name, symbol, description, image to share tokens
+- ✅ **Batch Distribution**: Send shares to multiple recipients in one call
+- ✅ **Transfer Tracking**: Database records of all share distributions
+- ✅ **Creator Attribution**: Track who created and distributed shares
+- ✅ **Recipient Details**: Store recipient names, IDs, and transfer notes
+
+#### Data Models
+
+**FractionalToken**
+- `id` (UUID) - Primary key
+- `originalNftMint` - Original NFT that was fractionalized
+- `shareTokenMint` - New fungible token address
+- `tokenName`, `tokenSymbol` - Token metadata
+- `totalShares` - Total supply of shares
+- `creatorName`, `creatorId` - Who created it
+- `metadataUri`, `explorerLink` - Blockchain links
+
+**ShareTransfer**
+- `id` (UUID) - Primary key
+- `shareTokenMint` - Which token was transferred
+- `fromWallet`, `toWallet` - Sender and recipient addresses
+- `amount` - Number of shares transferred
+- `recipientName`, `recipientId` - Recipient details
+- `transferredBy` - Who initiated the transfer
+- `transactionSignature` - Blockchain transaction hash
+- `note` - Optional transfer note
+
+---
 
 ## 📋 Prerequisites
 
-- Node.js v16 or higher
-- A Solana wallet (keypair file)
+- **Node.js** v16 or higher
+- **PostgreSQL** 12 or higher
+- **Solana CLI** (optional, for wallet management)
+- **Solana Wallet** (keypair file)
 - Basic understanding of Solana and NFTs
+
+---
 
 ## 🔧 Installation
 
-1. **Clone or navigate to the project directory**
+### 1. Clone and Install
 
 ```bash
 cd hotel
-```
-
-2. **Install dependencies**
-
-```bash
 npm install
 ```
 
-3. **Set up your Solana wallet**
+### 2. Set Up PostgreSQL Database
 
-If you don't have a Solana keypair, generate one:
+Create a PostgreSQL database:
 
-```bash
-solana-keygen new
+```sql
+CREATE DATABASE hotel_tracking;
 ```
 
-This will create a keypair at `~/.config/solana/id.json` by default.
+### 3. Configure Environment
 
-4. **Add your NFT images**
-
-Place your images in the `assets/images/` directory:
-- `collection.png` - Your collection cover image
-- `nft.png` - Your NFT image
-
-You can download sample images from:
-- [Collection image](https://github.com/solana-developers/professional-education/blob/main/labs/metaplex-umi/collection.png)
-- [NFT image](https://github.com/solana-developers/professional-education/blob/main/labs/metaplex-umi/nft.png)
-
-5. **Configure environment (optional)**
-
-The project works out of the box with devnet. To customize, create a `.env` file:
+Create a `.env` file in the project root:
 
 ```env
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+
+# Database Configuration (PostgreSQL)
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=hotel_tracking
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_DIALECT=postgres
+
+# Timezone (use standard IANA timezone)
+TZ=Asia/Kolkata
+
 # Solana Configuration
 SOLANA_CLUSTER=devnet
-RPC_ENDPOINT=https://api.devnet.solana.com
+SOLANA_RPC_ENDPOINT=https://api.devnet.solana.com
+SOLANA_KEYPAIR_PATH=/home/user/.config/solana/id.json
 
-# Fill these in as you create assets
-COLLECTION_NFT_ADDRESS=      # After creating collection
-NFT_ADDRESS=                 # After creating NFT
-SHARE_TOKEN_MINT=           # After fractionalizing NFT
+# Image Upload Directory
+IMAGE_UPLOAD_DIR=./uploads
 ```
 
-**Example populated .env** (from this project's actual devnet deployment):
+### 4. Initialize Database
 
-```env
-SOLANA_CLUSTER=devnet
-RPC_ENDPOINT=https://api.devnet.solana.com
-COLLECTION_NFT_ADDRESS=8A7r94LZLqgimZLKH5rUtDPxoDe2MUzFg1e33sUfeWAM
-NFT_ADDRESS=B8ZrqDvtgQ2NuLn28m4FedbQE1ncSftUKJwDYWpNu2RY
-SHARE_TOKEN_MINT=5VWBGCtochHAJ993YbLVBwg8dp3hqpPPs31Whjr99M5H
-```
-
-## 📖 Usage
-
-### 1. Create a Collection
+The database tables will be created automatically when you start the server.
 
 ```bash
-npm run create:collection
+npm run dev
 ```
 
-This will:
-- Upload your collection image to Irys
-- Create metadata for the collection
-- Mint a collection NFT on Solana
-- Display the collection address and explorer link
+### 5. Set Up Solana Wallet
 
-**Important**: Save the collection address displayed in the console!
-
-### 2. Create an NFT
-
-After creating a collection, you can create NFTs as part of that collection.
-
-**Option A: Update .env with collection address**
-
-```env
-COLLECTION_NFT_ADDRESS=<your-collection-address>
-```
-
-Then run:
+If you don't have a keypair:
 
 ```bash
-npm run create:nft
+solana-keygen new --outfile ~/.config/solana/id.json
 ```
 
-**Option B: Create standalone NFT**
-
-Just run the command without setting `COLLECTION_NFT_ADDRESS`:
+Fund your devnet wallet:
 
 ```bash
-npm run create:nft
+solana airdrop 2 --url devnet
 ```
 
-This will:
-- Upload your NFT image to Irys
-- Create metadata for the NFT
-- Mint the NFT on Solana
-- Associate it with the collection (if address provided)
-- Display the NFT address and explorer link
+---
 
-**Important**: Save the NFT address!
+## 📖 API Usage
 
-### 3. Verify NFT in Collection
-
-To officially verify an NFT as part of a collection:
-
-1. Update your `.env` file with both addresses:
-
-```env
-COLLECTION_NFT_ADDRESS=<your-collection-address>
-NFT_ADDRESS=<your-nft-address>
-```
-
-2. Run:
-
-```bash
-npm run verify:nft
-```
-
-This sets the `verified` field to `true`, which is important for marketplaces and wallets to recognize the NFT as part of the collection.
-
-### 4. Update NFT Metadata
-
-To update an existing NFT's metadata:
-
-1. Ensure `NFT_ADDRESS` is set in `.env`
-
-2. Edit the update configuration in `src/scripts/update-nft.ts`:
-
-```typescript
-const updateData: NFTUpdateData = {
-  name: "Updated NFT Name",
-  sellerFeeBasisPoints: 500, // 5% royalty
-  primarySaleHappened: true,
-  isMutable: true,
-};
-```
-
-3. Run:
-
-```bash
-npm run update:nft
-```
-
-### 5. Fractionalize NFT (Create Share Tokens)
-
-To split an NFT into 100 fungible share tokens:
-
-1. Update your `.env` file with the NFT address:
-
-```env
-NFT_ADDRESS=<your-nft-address>
-```
-
-2. Run:
-
-```bash
-npm run fractionalize:simple
-```
-
-This will:
-- Create a new SPL token with 0 decimals (fungible, but indivisible like shares)
-- Mint 100 share tokens to your wallet
-- Display the share token address and explorer link
-
-**Important**: Save the share token address! Add it to your `.env`:
-
-```env
-SHARE_TOKEN_MINT=<your-share-token-address>
-```
-
-### 6. Distribute Shares
-
-You have two methods to distribute shares to others:
-
-#### Method A: Programmatic Distribution (Recommended for Multiple Recipients)
-
-1. Update `src/scripts/distribute-shares-programmatic.ts` with recipients:
-
-```typescript
-const distributions: ShareDistribution[] = [
-  { address: "RECIPIENT_WALLET_1", amount: 10 },
-  { address: "RECIPIENT_WALLET_2", amount: 20 },
-  { address: "RECIPIENT_WALLET_3", amount: 15 },
-];
-```
-
-2. Ensure `SHARE_TOKEN_MINT` is set in `.env`
-
-3. Run:
-
-```bash
-npm run distribute:program
-```
-
-This will automatically:
-- Create token accounts for recipients (if needed)
-- Transfer shares to all recipients
-- Display transaction signatures and explorer links
-- Show updated ownership percentages
-
-#### Method B: CLI Distribution (For Single Transfers)
-
-Use the `spl-token` CLI for quick one-off transfers:
-
-```bash
-spl-token transfer <SHARE_TOKEN_MINT> <AMOUNT> <RECIPIENT_WALLET> --fund-recipient --url devnet
-```
-
-Example:
-
-```bash
-spl-token transfer 5VWBGCtochHAJ993YbLVBwg8dp3hqpPPs31Whjr99M5H 10 7Shg2Wm3nSiEG13FuVJnNmgZM3Tj57KGDSkMJFc1omFM --fund-recipient --url devnet
-```
-
-### 7. Verify Share Balances
-
-Check your share token balance:
-
-```bash
-spl-token balance <SHARE_TOKEN_MINT> --url devnet
-```
-
-View all your tokens:
-
-```bash
-spl-token accounts --url devnet
-```
-
-## 🏛️ Architecture Details
-
-### Core Modules
-
-#### **Configuration** (`src/config/`)
-- `constants.ts` - All project constants and environment config
-
-#### **Types** (`src/types/`)
-- `index.ts` - TypeScript interfaces for NFTs, collections, and configurations
-
-#### **Utilities** (`src/utils/`)
-- `umi.ts` - Umi instance creation and setup
-- `uploader.ts` - Image and metadata upload to Irys
-- `helpers.ts` - Common helper functions
-
-#### **Services** (`src/services/`)
-- `collection.ts` - Collection creation and management
-- `nft.ts` - NFT creation, update, and verification
-- `metadata.ts` - Metadata preparation and validation
-
-#### **Scripts** (`src/scripts/`)
-- `create-collection.ts` - Executable script to create collections
-- `create-nft.ts` - Executable script to create NFTs
-- `verify-nft.ts` - Executable script to verify NFTs
-- `update-nft.ts` - Executable script to update NFTs
-- `fractionalize-nft-simple.ts` - **NEW!** Automated share token creation
-- `distribute-shares-programmatic.ts` - **NEW!** Programmatic share distribution
-
-### Data Flow
-
-1. **Script Layer**: User runs npm command → script file
-2. **Service Layer**: Script calls service functions (collection, NFT, metadata)
-3. **Utility Layer**: Services use utilities (Umi, uploader, helpers)
-4. **External APIs**: Utilities interact with Solana and Irys
+### Base URL
 
 ```
-User Command
-    ↓
-Script (create-nft.ts)
-    ↓
-Service (nft.ts) → Validates config
-    ↓
-Utility (uploader.ts) → Uploads to Irys
-    ↓
-Utility (umi.ts) → Interacts with Solana
-    ↓
-Blockchain (NFT created)
+http://localhost:3000
 ```
 
-## 🛠️ Customization
+### API Documentation
 
-### Modify NFT/Collection Configuration
+Interactive Swagger documentation available at:
 
-Edit the configuration in the respective script files:
-
-**For Collections** (`src/scripts/create-collection.ts`):
-
-```typescript
-const collectionConfig: CollectionConfig = {
-  name: "Your Collection Name",
-  symbol: "SYMBOL",
-  description: "Your collection description",
-  imageFile: path.resolve("assets/images", "your-image.png"),
-  sellerFeeBasisPoints: 500, // 5% royalty
-};
+```
+http://localhost:3000/api-docs
 ```
 
-**For NFTs** (`src/scripts/create-nft.ts`):
+---
 
-```typescript
-const nftConfig: NFTConfig = {
-  name: "Your NFT Name",
-  symbol: "SYMBOL",
-  description: "Your NFT description",
-  imageFile: path.resolve("assets/images", "your-nft.png"),
-  sellerFeeBasisPoints: 0,
-  attributes: [
-    { trait_type: "Rarity", value: "Legendary" },
-    { trait_type: "Power", value: 100 },
-  ],
-};
-```
+## 🏭 Product Tracking APIs
 
-### Add Custom Services
+### 1. Create Product with NFT
 
-Create new service files in `src/services/` and import them in your scripts:
+**Endpoint**: `POST /api/products`
 
-```typescript
-// src/services/my-custom-service.ts
-export async function myCustomFunction(umi: Umi) {
-  // Your custom logic
+**Description**: Creates a product and automatically generates a Product Master NFT on the blockchain.
+
+**Request Body**:
+```json
+{
+  "gtin": "1234567890123",
+  "productName": "Premium Laptop",
+  "company": "TechCorp",
+  "category": "Electronics",
+  "model": "XPS-15",
+  "description": "High-performance laptop",
+  "specifications": {
+    "cpu": "Intel i7",
+    "ram": "16GB",
+    "storage": "512GB SSD"
+  },
+  "warrantyMonths": 24,
+  "imageUrl": "https://example.com/laptop.jpg",
+  "createNFT": true
 }
 ```
 
-## 📚 Key Concepts
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Product and NFT created successfully",
+  "data": {
+    "product": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "gtin": "1234567890123",
+      "productName": "Premium Laptop",
+      "company": "TechCorp",
+      "nftMintAddress": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+      "nftMetadataUri": "https://arweave.net/...",
+      "nftExplorerLink": "https://explorer.solana.com/address/7xKXt...?cluster=devnet"
+    },
+    "blockchain": {
+      "nftMintAddress": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+      "explorerLink": "https://explorer.solana.com/address/7xKXt...?cluster=devnet",
+      "metadataUri": "https://arweave.net/..."
+    }
+  }
+}
+```
 
-### NFTs on Solana
+**Key Points**:
+- Product ID is a UUID (not GTIN)
+- GTIN is optional
+- NFT creation is automatic (can be disabled with `createNFT: false`)
+- Product Master NFT is a non-collection NFT
 
-NFTs on Solana are SPL tokens with:
-- 0 decimals (indivisible)
-- Supply of 1 (only one exists)
-- Null mint authority (supply can't change)
-- Associated metadata account
+---
 
-### Metaplex Token Metadata
+### 2. Create Batch with Collection NFT
 
-The Token Metadata program:
-- Creates a Program Derived Address (PDA) for metadata
-- Stores onchain metadata (name, symbol, URI)
-- Links to offchain metadata (JSON with image, attributes, etc.)
+**Endpoint**: `POST /api/batches`
 
-### Umi Framework
+**Description**: Creates a batch and generates a Batch Collection NFT that references the Product Master NFT.
 
-Umi is Metaplex's framework for interacting with Solana programs:
-- Provides a unified interface
-- Handles transaction signing
-- Manages program interactions
-- Includes uploader plugins (Irys, NFT.Storage, etc.)
+**Request Body**:
+```json
+{
+  "productId": "550e8400-e29b-41d4-a716-446655440000",
+  "batchName": "2025-Q1-Factory-A",
+  "manufacturingFacility": "Factory-A, Mumbai",
+  "productionLine": "Line-1",
+  "startDate": "2025-10-26T14:49:31.383Z",
+  "plannedQuantity": 1000,
+  "imageUrl": "https://example.com/batch-qr.jpg"
+}
+```
 
-## 🔐 Security Notes
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Batch and NFT Collection created successfully",
+  "data": {
+    "batch": {
+      "id": "660e8400-e29b-41d4-a716-446655440111",
+      "productId": "550e8400-e29b-41d4-a716-446655440000",
+      "batchName": "2025-Q1-Factory-A",
+      "nftCollectionAddress": "9yKXtg3CW87d97TXJSDpbD5jBkheTqA83TZRuJosgBsV",
+      "productNftReference": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
+    },
+    "blockchain": {
+      "collectionAddress": "9yKXtg3CW87d97TXJSDpbD5jBkheTqA83TZRuJosgBsV",
+      "explorerLink": "https://explorer.solana.com/address/9yKXt...?cluster=devnet"
+    }
+  }
+}
+```
 
-- Never commit your keypair files to version control
-- `.gitignore` is configured to exclude keypair files
-- Store private keys securely
-- Use environment variables for sensitive configuration
+**Key Points**:
+- Batch Collection NFT is created as a Metaplex Collection
+- Metadata includes reference to Product Master NFT
+- All items in this batch will be members of this collection
 
-## 📝 Development
+---
+
+### 3. Create Item NFT
+
+**Endpoint**: `POST /api/items`
+
+**Description**: Creates an individual product item NFT as a member of the batch collection.
+
+**Request Body**:
+```json
+{
+  "batchId": "660e8400-e29b-41d4-a716-446655440111",
+  "serialNumber": "SN-2025-001",
+  "rfidTag": "RFID-ABC123",
+  "manufacturingDate": "2025-10-26T10:00:00Z",
+  "imageUrl": "https://example.com/item-qr.jpg"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Item and NFT created successfully",
+  "data": {
+    "item": {
+      "id": "770e8400-e29b-41d4-a716-446655440222",
+      "batchId": "660e8400-e29b-41d4-a716-446655440111",
+      "serialNumber": "SN-2025-001",
+      "rfidTag": "RFID-ABC123",
+      "nftMintAddress": "AzKXtg4DW87d97TXJSDpbD5jBkheTqA83TZRuJosgCsW",
+      "status": "manufactured"
+    },
+    "blockchain": {
+      "nftMintAddress": "AzKXtg4DW87d97TXJSDpbD5jBkheTqA83TZRuJosgCsW",
+      "explorerLink": "https://explorer.solana.com/address/AzKXt...?cluster=devnet",
+      "verified": true
+    }
+  }
+}
+```
+
+**Key Points**:
+- Item NFT is automatically verified as a member of the Batch Collection
+- Metadata includes both Product and Batch references
+- Each item has a unique serial number and NFT address
+
+---
+
+### 4. Get Product by ID
+
+**Endpoint**: `GET /api/products/:id`
+
+**Example**: `GET /api/products/550e8400-e29b-41d4-a716-446655440000`
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "gtin": "1234567890123",
+    "productName": "Premium Laptop",
+    "company": "TechCorp",
+    "nftMintAddress": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+    "nftExplorerLink": "https://explorer.solana.com/address/7xKXt...?cluster=devnet"
+  }
+}
+```
+
+---
+
+### 5. Get Batch by ID
+
+**Endpoint**: `GET /api/batches/:id`
+
+**Example**: `GET /api/batches/660e8400-e29b-41d4-a716-446655440111`
+
+---
+
+### 6. Get Item by ID
+
+**Endpoint**: `GET /api/items/:id`
+
+**Example**: `GET /api/items/770e8400-e29b-41d4-a716-446655440222`
+
+---
+
+### 7. Update Item Status
+
+**Endpoint**: `PATCH /api/items/:id/status`
+
+**Request Body**:
+```json
+{
+  "status": "shipped",
+  "location": "Mumbai Warehouse"
+}
+```
+
+**Available Statuses**:
+- `manufactured` - Just created
+- `in_warehouse` - In storage
+- `in_transit` - Being shipped
+- `delivered` - At destination
+- `with_distributor` - At distributor
+- `with_retailer` - At retail location
+- `sold` - Sold to end customer
+
+---
+
+## 💎 Fractionalization APIs
+
+### 1. Fractionalize NFT
+
+**Endpoint**: `POST /api/fractionalize`
+
+**Description**: Convert an NFT into fungible share tokens with metadata.
+
+**Request Body**:
+```json
+{
+  "nftMintAddress": "B8ZrqDvtgQ2NuLn28m4FedbQE1ncSftUKJwDYWpNu2RY",
+  "totalShares": 100,
+  "tokenName": "Premium Laptop Shares",
+  "tokenSymbol": "LAPTOP",
+  "creatorName": "John Doe",
+  "creatorId": "user-123",
+  "description": "Fractional ownership of Premium Laptop NFT",
+  "imageUrl": "https://example.com/share-token.jpg"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "NFT fractionalized successfully",
+  "data": {
+    "fractionalToken": {
+      "id": "880e8400-e29b-41d4-a716-446655440333",
+      "originalNftMint": "B8ZrqDvtgQ2NuLn28m4FedbQE1ncSftUKJwDYWpNu2RY",
+      "shareTokenMint": "5VWBGCtochHAJ993YbLVBwg8dp3hqpPPs31Whjr99M5H",
+      "tokenName": "Premium Laptop Shares",
+      "tokenSymbol": "LAPTOP",
+      "totalShares": 100,
+      "creatorName": "John Doe",
+      "explorerLink": "https://explorer.solana.com/address/5VWBG...?cluster=devnet"
+    }
+  }
+}
+```
+
+**Key Points**:
+- Creates a new SPL Token with 0 decimals (indivisible shares)
+- Uses hybrid approach: Metaplex for metadata + SPL Token for minting
+- Mints all shares to creator's wallet initially
+- Token metadata is stored on Irys/Arweave
+
+---
+
+### 2. Distribute Shares
+
+**Endpoint**: `POST /api/fractionalize/distribute`
+
+**Description**: Send shares to multiple recipients with tracking.
+
+**Request Body**:
+```json
+{
+  "shareTokenMintAddress": "5VWBGCtochHAJ993YbLVBwg8dp3hqpPPs31Whjr99M5H",
+  "distributions": [
+    {
+      "recipientWallet": "7Shg2Wm3nSiEG13FuVJnNmgZM3Tj57KGDSkMJFc1omFM",
+      "amount": 10,
+      "recipientName": "Alice Smith",
+      "recipientId": "user-456",
+      "note": "Initial investor allocation"
+    },
+    {
+      "recipientWallet": "8Thg3Xn4oTjFH14GuWKoNaH4Uk68LHEUpNKd2pqGpnGN",
+      "amount": 15,
+      "recipientName": "Bob Johnson",
+      "recipientId": "user-789",
+      "note": "Advisor shares"
+    }
+  ]
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Shares distributed successfully",
+  "data": {
+    "totalRecipients": 2,
+    "totalSharesDistributed": 25,
+    "transfers": [
+      {
+        "recipientWallet": "7Shg2Wm3nSiEG13FuVJnNmgZM3Tj57KGDSkMJFc1omFM",
+        "recipientName": "Alice Smith",
+        "amount": 10,
+        "transactionSignature": "5j8k...",
+        "explorerLink": "https://explorer.solana.com/tx/5j8k...?cluster=devnet",
+        "transferredBy": "John Doe",
+        "transferredAt": "2025-10-26T15:30:00Z"
+      },
+      {
+        "recipientWallet": "8Thg3Xn4oTjFH14GuWKoNaH4Uk68LHEUpNKd2pqGpnGN",
+        "recipientName": "Bob Johnson",
+        "amount": 15,
+        "transactionSignature": "6k9l...",
+        "explorerLink": "https://explorer.solana.com/tx/6k9l...?cluster=devnet",
+        "transferredBy": "John Doe",
+        "transferredAt": "2025-10-26T15:30:05Z"
+      }
+    ]
+  }
+}
+```
+
+**Key Points**:
+- Automatically creates token accounts for recipients if needed
+- Tracks each transfer in the database
+- Records recipient details and transfer notes
+- Returns transaction signatures for verification
+
+---
+
+### 3. Get Fractionalization History
+
+**Endpoint**: `GET /api/fractionalize/tokens/:nftMintAddress`
+
+**Description**: Get fractionalization details for a specific NFT.
+
+**Example**: `GET /api/fractionalize/tokens/B8ZrqDvtgQ2NuLn28m4FedbQE1ncSftUKJwDYWpNu2RY`
+
+---
+
+### 4. Get Share Transfer History
+
+**Endpoint**: `GET /api/fractionalize/transfers/:shareTokenMint`
+
+**Description**: Get all transfer history for a share token.
+
+**Example**: `GET /api/fractionalize/transfers/5VWBGCtochHAJ993YbLVBwg8dp3hqpPPs31Whjr99M5H`
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "shareTokenMint": "5VWBGCtochHAJ993YbLVBwg8dp3hqpPPs31Whjr99M5H",
+    "totalTransfers": 2,
+    "totalDistributed": 25,
+    "transfers": [
+      {
+        "id": "990e8400-e29b-41d4-a716-446655440444",
+        "toWallet": "7Shg2Wm3nSiEG13FuVJnNmgZM3Tj57KGDSkMJFc1omFM",
+        "recipientName": "Alice Smith",
+        "amount": 10,
+        "note": "Initial investor allocation",
+        "transactionSignature": "5j8k...",
+        "createdAt": "2025-10-26T15:30:00Z"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 🛠️ Development
+
+### Start Development Server
+
+```bash
+npm run dev
+```
+
+Server starts at `http://localhost:3000`
+
+### Production Build
+
+```bash
+npm run build
+npm start
+```
 
 ### Type Checking
 
@@ -432,169 +658,330 @@ Umi is Metaplex's framework for interacting with Solana programs:
 npx tsc --noEmit
 ```
 
-### Run Individual Scripts
+### Database Management
 
+**Reset Database** (warning: deletes all data):
 ```bash
-# NFT Operations
-npx esrun src/scripts/create-collection.ts
-npx esrun src/scripts/create-nft.ts
-npx esrun src/scripts/verify-nft.ts
-npx esrun src/scripts/update-nft.ts
-
-# Fractionalization & Distribution
-npx esrun src/scripts/fractionalize-nft-simple.ts
-npx esrun src/scripts/distribute-shares-programmatic.ts
+# In PostgreSQL
+DROP DATABASE hotel_tracking;
+CREATE DATABASE hotel_tracking;
 ```
 
-### npm Scripts
-
-```bash
-# NFT Operations
-npm run create:collection    # Create NFT collection
-npm run create:nft          # Create NFT
-npm run verify:nft          # Verify NFT in collection
-npm run update:nft          # Update NFT metadata
-
-# Fractionalization & Distribution
-npm run fractionalize:simple    # Create share tokens
-npm run distribute:program      # Distribute shares programmatically
-```
-
-## 🌐 Networks
-
-The project supports all Solana clusters:
-
-- `devnet` - For development and testing (default)
-- `testnet` - For final testing before mainnet
-- `mainnet-beta` - For production
-
-Change the cluster in your `.env` file or `src/config/constants.ts`.
-
-## 🐛 Troubleshooting
-
-### "Insufficient balance" error
-
-Run the create command again - it will automatically airdrop SOL on devnet.
-
-### "Collection address not found"
-
-Make sure you've set `COLLECTION_NFT_ADDRESS` in your `.env` file.
-
-### "Image not found"
-
-Ensure your image files are in the `assets/images/` directory.
-
-### TypeScript errors
-
-Run `npm install` to ensure all dependencies are installed.
-
-### "SHARE_TOKEN_MINT not set" error
-
-Add your share token address to `.env`:
-
-```env
-SHARE_TOKEN_MINT=<your-share-token-address>
-```
-
-### "Insufficient shares" error
-
-Check your balance before distributing:
-
-```bash
-spl-token balance <SHARE_TOKEN_MINT> --url devnet
-```
-
-### "Recipient is owned by this token program" error
-
-Make sure you're sending to a **wallet address**, not a token or NFT mint address. Wallet addresses are usually associated with user accounts.
-
-### Airdrop rate limit
-
-If airdrops fail, wait 5-10 minutes or use the [Solana Faucet](https://faucet.solana.com).
-
-## 📚 Complete Documentation Suite
-
-This project includes comprehensive documentation for all features:
-
-| Document | Description | Use Case |
-|----------|-------------|----------|
-| **COMPLETE_GUIDE.md** | **Master guide** - Everything in one place | ⭐ Start here for complete overview |
-| **README.md** | This file - Full platform documentation | Technical reference |
-| **START_HERE.md** | Quick start guide for newcomers | First-time setup |
-| **QUICKSTART.md** | 5-minute fast setup | Rapid deployment |
-| **ARCHITECTURE.md** | Deep dive into technical architecture | Understanding codebase |
-| **PROGRAMMATIC_DISTRIBUTION_GUIDE.md** | Automated share distribution guide | Batch operations |
-| **SHARE_YOUR_NFT.md** | NFT fractionalization walkthrough | Learning fractionalization |
-| **WORKING_VS_BROKEN.md** | Script comparison and lessons learned | Understanding what works |
-| **YOUR_SHARE_TOKEN.md** | Personal reference for your assets | Quick lookup |
-
-### What Makes This Platform Complete
-
-✅ **Full NFT Lifecycle**
-- Create collections
-- Mint NFTs
-- Verify in collections
-- Update metadata
-
-✅ **Advanced Fractionalization**
-- Automated share token creation
-- Configurable share amounts
-- Transaction tracking
-
-✅ **Flexible Distribution**
-- CLI for quick transfers
-- Programmatic for batch operations
-- Multiple recipient support
-
-✅ **Production-Ready**
-- Clean architecture
-- Type safety
-- Error handling
-- Comprehensive docs
-
-## 🎯 Real-World Examples
-
-### Your Live Assets (Devnet)
-
-**Wallet**: `2f7CJ8DWT8zJbVnC95rooMUoeh7yb7wewZha1hTAjU45`
-
-**NFT Collection**: `8A7r94LZLqgimZLKH5rUtDPxoDe2MUzFg1e33sUfeWAM`
-- View on [Solana Explorer](https://explorer.solana.com/address/8A7r94LZLqgimZLKH5rUtDPxoDe2MUzFg1e33sUfeWAM?cluster=devnet)
-
-**NFT #1** (Verified): `B8ZrqDvtgQ2NuLn28m4FedbQE1ncSftUKJwDYWpNu2RY`
-- View on [Solana Explorer](https://explorer.solana.com/address/B8ZrqDvtgQ2NuLn28m4FedbQE1ncSftUKJwDYWpNu2RY?cluster=devnet)
-
-**Share Token** (85 remaining): `5VWBGCtochHAJ993YbLVBwg8dp3hqpPPs31Whjr99M5H`
-- View on [Solana Explorer](https://explorer.solana.com/address/5VWBGCtochHAJ993YbLVBwg8dp3hqpPPs31Whjr99M5H?cluster=devnet)
-- **Total Supply**: 100 shares
-- **Distributed**: 15 shares (15%)
-- **Your Balance**: 85 shares (85%)
-
-### Proven Transaction History
-
-✅ **NFT Creation**: Created 3 NFTs and 1 collection  
-✅ **Fractionalization**: Created 3 share tokens (300 total shares)  
-✅ **CLI Distribution**: Sent 10 shares successfully  
-✅ **Programmatic Distribution**: Sent 5 shares successfully  
-✅ **Total Distributed**: 15 shares to real recipient  
-✅ **Success Rate**: 100%
-
-## 📖 Additional Resources
-
-- [Solana Documentation](https://docs.solana.com/)
-- [Metaplex Documentation](https://developers.metaplex.com/)
-- [Umi Framework](https://github.com/metaplex-foundation/umi)
-- [Solana Cookbook](https://solanacookbook.com/)
-
-## 📄 License
-
-MIT
-
-## 🤝 Contributing
-
-Feel free to submit issues and enhancement requests!
+Then restart the server to recreate tables.
 
 ---
 
-**Happy NFT Building! 🎨🚀**
+## 🔐 Security Best Practices
 
+### Wallet Security
+- ✅ Never commit keypair files to version control
+- ✅ Store keypair in secure location (`~/.config/solana/`)
+- ✅ Use environment variables for sensitive paths
+- ✅ Restrict file permissions: `chmod 600 ~/.config/solana/id.json`
+
+### Database Security
+- ✅ Use strong passwords
+- ✅ Limit database user permissions
+- ✅ Use SSL for production database connections
+- ✅ Regular backups
+
+### API Security
+- ⚠️ Add authentication (JWT, API keys)
+- ⚠️ Implement rate limiting
+- ⚠️ Use HTTPS in production
+- ⚠️ Validate all inputs
+
+---
+
+## 📊 Database Schema
+
+### Products Table
+```sql
+CREATE TABLE "Products" (
+  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "gtin" VARCHAR(14),
+  "productName" VARCHAR(255) NOT NULL,
+  "company" VARCHAR(255) NOT NULL,
+  "category" VARCHAR(100) NOT NULL,
+  "nftMintAddress" VARCHAR(255),
+  "nftMetadataUri" TEXT,
+  "nftExplorerLink" TEXT,
+  "isActive" BOOLEAN DEFAULT true,
+  "createdAt" TIMESTAMP,
+  "updatedAt" TIMESTAMP
+);
+```
+
+### Batches Table
+```sql
+CREATE TABLE "Batches" (
+  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "productId" UUID REFERENCES "Products"("id"),
+  "batchName" VARCHAR(255) NOT NULL,
+  "manufacturingFacility" VARCHAR(255),
+  "productionLine" VARCHAR(100),
+  "nftCollectionAddress" VARCHAR(255),
+  "productNftReference" VARCHAR(255),
+  "createdAt" TIMESTAMP,
+  "updatedAt" TIMESTAMP
+);
+```
+
+### Items Table
+```sql
+CREATE TABLE "Items" (
+  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "batchId" UUID REFERENCES "Batches"("id"),
+  "serialNumber" VARCHAR(100) UNIQUE NOT NULL,
+  "rfidTag" VARCHAR(100),
+  "nftMintAddress" VARCHAR(255),
+  "status" VARCHAR(50) DEFAULT 'manufactured',
+  "createdAt" TIMESTAMP,
+  "updatedAt" TIMESTAMP
+);
+```
+
+### FractionalTokens Table
+```sql
+CREATE TABLE "FractionalTokens" (
+  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "originalNftMint" VARCHAR(255) NOT NULL,
+  "shareTokenMint" VARCHAR(255) NOT NULL,
+  "tokenName" VARCHAR(100),
+  "tokenSymbol" VARCHAR(10),
+  "totalShares" INTEGER NOT NULL,
+  "creatorName" VARCHAR(255),
+  "creatorId" VARCHAR(100),
+  "metadataUri" TEXT,
+  "explorerLink" TEXT,
+  "createdAt" TIMESTAMP
+);
+```
+
+### ShareTransfers Table
+```sql
+CREATE TABLE "ShareTransfers" (
+  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "shareTokenMint" VARCHAR(255) NOT NULL,
+  "fromWallet" VARCHAR(255) NOT NULL,
+  "toWallet" VARCHAR(255) NOT NULL,
+  "amount" INTEGER NOT NULL,
+  "recipientName" VARCHAR(255),
+  "recipientId" VARCHAR(100),
+  "transferredBy" VARCHAR(255),
+  "transactionSignature" VARCHAR(255),
+  "note" TEXT,
+  "createdAt" TIMESTAMP
+);
+```
+
+---
+
+## 🌐 NFT Hierarchy Explained
+
+### Product Master NFT
+- **Type**: Non-Collection NFT
+- **Purpose**: Represents the product line/model
+- **Created**: When product is registered
+- **Contains**: Product details, specifications, company info
+- **Unique per**: Product model
+
+### Batch Collection NFT
+- **Type**: Metaplex Collection NFT
+- **Purpose**: Represents a manufacturing batch
+- **Created**: When batch is created
+- **Contains**: Batch details, manufacturing info, product reference
+- **Unique per**: Manufacturing batch
+- **Parent**: Product Master NFT (via metadata)
+
+### Item NFT
+- **Type**: Collection Member NFT
+- **Purpose**: Represents individual product unit
+- **Created**: When item is manufactured
+- **Contains**: Serial number, RFID, batch reference, product reference
+- **Unique per**: Physical product unit
+- **Parent**: Batch Collection NFT (verified member)
+
+### Verification Flow
+
+```
+1. Create Product → Product Master NFT minted
+2. Create Batch → Batch Collection NFT minted (references product)
+3. Create Item → Item NFT minted & verified in collection
+4. Consumer scans → Verifies on blockchain → Sees full provenance
+```
+
+---
+
+## 🎯 Use Cases
+
+### Product Authentication
+1. **Luxury Goods**: Prove authenticity of high-value items
+2. **Electronics**: Track warranty and prevent counterfeits
+3. **Pharmaceuticals**: Ensure supply chain integrity
+4. **Automotive Parts**: Verify genuine OEM components
+
+### NFT Fractionalization
+1. **Investment**: Multiple investors own shares of valuable NFTs
+2. **Collectibles**: Democratize access to expensive NFTs
+3. **Real Estate**: Tokenize property ownership
+4. **Art**: Share ownership of digital or physical art
+
+---
+
+## 🐛 Troubleshooting
+
+### "Cannot connect to database"
+```bash
+# Check PostgreSQL is running
+sudo systemctl status postgresql
+
+# Check connection details in .env
+# Test connection
+psql -h localhost -U postgres -d hotel_tracking
+```
+
+### "Insufficient SOL balance"
+```bash
+# For devnet
+solana airdrop 2 --url devnet
+
+# Check balance
+solana balance --url devnet
+```
+
+### "Product NFT not found" when creating batch
+- Ensure the product was created with `createNFT: true`
+- Check product has `nftMintAddress` populated
+- Verify the product ID (UUID) is correct
+
+### "Timezone error" in DBeaver
+- Update DBeaver connection properties
+- Set `timezone` to standard IANA format (e.g., `Asia/Kolkata`)
+- Remove any deprecated timezone names
+
+### JSON parsing errors
+- Use double quotes (`"`) for all JSON keys and string values
+- Validate JSON format before sending requests
+- Use Postman or curl for testing
+
+---
+
+## 📚 API Testing with curl
+
+### Create Product
+```bash
+curl -X POST http://localhost:3000/api/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "productName": "Test Product",
+    "company": "Test Company",
+    "category": "Electronics",
+    "createNFT": true
+  }'
+```
+
+### Create Batch
+```bash
+curl -X POST http://localhost:3000/api/batches \
+  -H "Content-Type: application/json" \
+  -d '{
+    "productId": "YOUR_PRODUCT_UUID",
+    "batchName": "Test Batch",
+    "manufacturingFacility": "Factory A",
+    "productionLine": "Line 1",
+    "plannedQuantity": 100
+  }'
+```
+
+### Create Item
+```bash
+curl -X POST http://localhost:3000/api/items \
+  -H "Content-Type: application/json" \
+  -d '{
+    "batchId": "YOUR_BATCH_UUID",
+    "serialNumber": "SN-001",
+    "rfidTag": "RFID-001"
+  }'
+```
+
+### Fractionalize NFT
+```bash
+curl -X POST http://localhost:3000/api/fractionalize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nftMintAddress": "YOUR_NFT_ADDRESS",
+    "totalShares": 100,
+    "tokenName": "My Shares",
+    "tokenSymbol": "SHARE",
+    "creatorName": "John Doe",
+    "creatorId": "user-123"
+  }'
+```
+
+---
+
+## 📖 Additional Resources
+
+### Solana
+- [Solana Documentation](https://docs.solana.com/)
+- [Solana Cookbook](https://solanacookbook.com/)
+- [Solana Explorer](https://explorer.solana.com/)
+
+### Metaplex
+- [Metaplex Documentation](https://developers.metaplex.com/)
+- [Umi Framework](https://github.com/metaplex-foundation/umi)
+- [Token Metadata Standard](https://developers.metaplex.com/token-metadata)
+
+### SPL Token
+- [SPL Token Documentation](https://spl.solana.com/token)
+- [Token Program Guide](https://docs.solana.com/developing/runtime-facilities/programs#token-program)
+
+### Development Tools
+- [Swagger Documentation](https://swagger.io/docs/)
+- [Sequelize ORM](https://sequelize.org/)
+- [Express.js](https://expressjs.com/)
+
+---
+
+## 🎯 Quick Start Checklist
+
+- [ ] Install Node.js and PostgreSQL
+- [ ] Clone repository and run `npm install`
+- [ ] Create PostgreSQL database
+- [ ] Configure `.env` file
+- [ ] Set up Solana keypair
+- [ ] Start server: `npm run dev`
+- [ ] Access Swagger docs: `http://localhost:3000/api-docs`
+- [ ] Create your first product with NFT
+- [ ] Create a batch and items
+- [ ] Try fractionalizing an NFT
+- [ ] Test share distribution
+
+---
+
+## 📄 License
+
+MIT License - Feel free to use this project for commercial or personal projects.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+---
+
+## 📞 Support
+
+For issues or questions:
+1. Check the Troubleshooting section
+2. Review Swagger API documentation
+3. Check Solana Explorer for transaction details
+4. Review server logs for detailed error messages
+
+---
+
+**Built with ❤️ using Solana, Metaplex, and Express.js**
+
+**Happy Building! 🚀🏭💎**
