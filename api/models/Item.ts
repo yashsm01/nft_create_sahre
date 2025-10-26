@@ -11,7 +11,7 @@ import Batch from './Batch';
 export interface ItemAttributes {
   id: number;
   serialNumber: string;
-  batchId: number;
+  batchId: string;  // UUID reference to Batch
   manufacturingDate: Date;
   manufacturingOperator: string;
   qualityStatus: 'PENDING' | 'PASSED' | 'FAILED' | 'REWORK';
@@ -79,7 +79,7 @@ interface ItemCreationAttributes extends Optional<ItemAttributes, 'id' | 'qualit
 class Item extends Model<ItemAttributes, ItemCreationAttributes> implements ItemAttributes {
   declare id: number;
   declare serialNumber: string;
-  declare batchId: number;
+  declare batchId: string;
   declare manufacturingDate: Date;
   declare manufacturingOperator: string;
   declare qualityStatus: 'PENDING' | 'PASSED' | 'FAILED' | 'REWORK';
@@ -115,7 +115,7 @@ Item.init(
       },
     },
     batchId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.UUID,
       allowNull: false,
       references: {
         model: 'batches',

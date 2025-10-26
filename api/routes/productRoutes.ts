@@ -48,30 +48,31 @@ router.get('/', productController.getAllProducts);
 
 /**
  * @swagger
- * /api/products/{gtin}:
+ * /api/products/{id}:
  *   get:
- *     summary: Get product by GTIN
+ *     summary: Get product by ID
  *     tags: [Products]
  *     parameters:
  *       - in: path
- *         name: gtin
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: Product GTIN barcode
+ *         description: Product UUID
  *     responses:
  *       200:
  *         description: Product details
  *       404:
  *         description: Product not found
  */
-router.get('/:gtin', productController.getProductByGtin);
+router.get('/:id', productController.getProductById);
 
 /**
  * @swagger
  * /api/products:
  *   post:
- *     summary: Create new product
+ *     summary: Create new product (with automatic NFT creation)
+ *     description: Creates a product with UUID and automatically creates Product Master NFT on blockchain
  *     tags: [Products]
  *     requestBody:
  *       required: true
@@ -80,14 +81,10 @@ router.get('/:gtin', productController.getProductByGtin);
  *           schema:
  *             type: object
  *             required:
- *               - gtin
  *               - productName
  *               - company
  *               - category
  *             properties:
- *               gtin:
- *                 type: string
- *                 example: "8901234567890"
  *               productName:
  *                 type: string
  *                 example: Model-X Pro
@@ -97,6 +94,10 @@ router.get('/:gtin', productController.getProductByGtin);
  *               category:
  *                 type: string
  *                 example: Electronics
+ *               gtin:
+ *                 type: string
+ *                 example: "8901234567890"
+ *                 description: Optional GTIN barcode
  *               description:
  *                 type: string
  *               model:
@@ -107,9 +108,44 @@ router.get('/:gtin', productController.getProductByGtin);
  *                 type: integer
  *               imageUrl:
  *                 type: string
+ *               createNFT:
+ *                 type: boolean
+ *                 default: true
+ *                 description: Automatically create NFT (default true)
  *     responses:
  *       201:
- *         description: Product created successfully
+ *         description: Product (and NFT) created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     product:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           description: UUID
+ *                         productName:
+ *                           type: string
+ *                         nftMintAddress:
+ *                           type: string
+ *                     blockchain:
+ *                       type: object
+ *                       properties:
+ *                         nftMintAddress:
+ *                           type: string
+ *                         explorerLink:
+ *                           type: string
+ *                         metadataUri:
+ *                           type: string
  *       409:
  *         description: Product with this GTIN already exists
  */
@@ -117,16 +153,17 @@ router.post('/', productController.createProduct);
 
 /**
  * @swagger
- * /api/products/{gtin}:
+ * /api/products/{id}:
  *   put:
  *     summary: Update product
  *     tags: [Products]
  *     parameters:
  *       - in: path
- *         name: gtin
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
+ *         description: Product UUID
  *     requestBody:
  *       required: true
  *       content:
@@ -139,40 +176,42 @@ router.post('/', productController.createProduct);
  *       404:
  *         description: Product not found
  */
-router.put('/:gtin', productController.updateProduct);
+router.put('/:id', productController.updateProduct);
 
 /**
  * @swagger
- * /api/products/{gtin}/deactivate:
+ * /api/products/{id}/deactivate:
  *   put:
  *     summary: Deactivate product
  *     tags: [Products]
  *     parameters:
  *       - in: path
- *         name: gtin
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
+ *         description: Product UUID
  *     responses:
  *       200:
  *         description: Product deactivated successfully
  *       404:
  *         description: Product not found
  */
-router.put('/:gtin/deactivate', productController.deactivateProduct);
+router.put('/:id/deactivate', productController.deactivateProduct);
 
 /**
  * @swagger
- * /api/products/{gtin}:
+ * /api/products/{id}:
  *   delete:
  *     summary: Delete product
  *     tags: [Products]
  *     parameters:
  *       - in: path
- *         name: gtin
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
+ *         description: Product UUID
  *     responses:
  *       200:
  *         description: Product deleted successfully
@@ -181,26 +220,27 @@ router.put('/:gtin/deactivate', productController.deactivateProduct);
  *       404:
  *         description: Product not found
  */
-router.delete('/:gtin', productController.deleteProduct);
+router.delete('/:id', productController.deleteProduct);
 
 /**
  * @swagger
- * /api/products/{gtin}/stats:
+ * /api/products/{id}/stats:
  *   get:
  *     summary: Get product statistics
  *     tags: [Products]
  *     parameters:
  *       - in: path
- *         name: gtin
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
+ *         description: Product UUID
  *     responses:
  *       200:
  *         description: Product statistics
  *       404:
  *         description: Product not found
  */
-router.get('/:gtin/stats', productController.getProductStats);
+router.get('/:id/stats', productController.getProductStats);
 
 export default router;

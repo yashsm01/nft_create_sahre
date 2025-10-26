@@ -5,11 +5,12 @@
 
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
+import { v4 as uuidv4 } from 'uuid';
 
 // Product attributes interface
 export interface ProductAttributes {
-  id: number;
-  gtin: string;  // Global Trade Item Number (unique barcode)
+  id: string;  // UUID
+  gtin?: string;  // Global Trade Item Number (optional)
   productName: string;
   company: string;
   category: string;
@@ -18,6 +19,9 @@ export interface ProductAttributes {
   specifications?: object;
   warrantyMonths?: number;
   imageUrl?: string;
+  nftMintAddress?: string;  // Product Master NFT address
+  nftMetadataUri?: string;  // Metadata URI for Product NFT
+  nftExplorerLink?: string;  // Solana Explorer link
   metadata?: object;
   isActive: boolean;
   createdAt?: Date;
@@ -25,7 +29,7 @@ export interface ProductAttributes {
 }
 
 // Optional fields for creation
-interface ProductCreationAttributes extends Optional<ProductAttributes, 'id' | 'description' | 'model' | 'specifications' | 'warrantyMonths' | 'imageUrl' | 'metadata' | 'isActive'> { }
+interface ProductCreationAttributes extends Optional<ProductAttributes, 'id' | 'gtin' | 'description' | 'model' | 'specifications' | 'warrantyMonths' | 'imageUrl' | 'nftMintAddress' | 'nftMetadataUri' | 'nftExplorerLink' | 'metadata' | 'isActive'> { }
 
 /**
  * Product Model Class
@@ -35,17 +39,18 @@ interface ProductCreationAttributes extends Optional<ProductAttributes, 'id' | '
  *     Product:
  *       type: object
  *       required:
- *         - gtin
  *         - productName
  *         - company
  *         - category
  *       properties:
  *         id:
- *           type: integer
- *           description: Auto-generated ID
+ *           type: string
+ *           format: uuid
+ *           description: Auto-generated UUID
+ *           example: "550e8400-e29b-41d4-a716-446655440000"
  *         gtin:
  *           type: string
- *           description: Global Trade Item Number (barcode)
+ *           description: Global Trade Item Number (optional)
  *           example: "8901234567890"
  *         productName:
  *           type: string
@@ -81,8 +86,8 @@ interface ProductCreationAttributes extends Optional<ProductAttributes, 'id' | '
  *           description: Whether product is active
  */
 class Product extends Model<ProductAttributes, ProductCreationAttributes> implements ProductAttributes {
-  declare id: number;
-  declare gtin: string;
+  declare id: string;
+  declare gtin?: string;
   declare productName: string;
   declare company: string;
   declare category: string;
@@ -91,6 +96,9 @@ class Product extends Model<ProductAttributes, ProductCreationAttributes> implem
   declare specifications?: object;
   declare warrantyMonths?: number;
   declare imageUrl?: string;
+  declare nftMintAddress?: string;
+  declare nftMetadataUri?: string;
+  declare nftExplorerLink?: string;
   declare metadata?: object;
   declare isActive: boolean;
 
@@ -102,19 +110,18 @@ class Product extends Model<ProductAttributes, ProductCreationAttributes> implem
 Product.init(
   {
     id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
     gtin: {
       type: DataTypes.STRING(50),
-      allowNull: false,
+      allowNull: true,
       unique: true,
       validate: {
-        notEmpty: true,
         is: /^[0-9]+$/i, // Only numbers
       },
-      comment: 'Global Trade Item Number (barcode)',
+      comment: 'Global Trade Item Number (barcode) - Optional',
     },
     productName: {
       type: DataTypes.STRING(200),
@@ -162,6 +169,21 @@ Product.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    nftMintAddress: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: 'Product Master NFT mint address on Solana',
+    },
+    nftMetadataUri: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Arweave/IPFS URI for NFT metadata',
+    },
+    nftExplorerLink: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Solana Explorer link for Product NFT',
+    },
     metadata: {
       type: DataTypes.JSONB,
       allowNull: true,
@@ -189,6 +211,9 @@ Product.init(
       },
       {
         fields: ['isActive'],
+      },
+      {
+        fields: ['nftMintAddress'],
       },
     ],
   }

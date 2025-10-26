@@ -18,8 +18,8 @@ const router = express.Router();
  *       - in: query
  *         name: productId
  *         schema:
- *           type: integer
- *         description: Filter by product ID
+ *           type: string
+ *         description: Filter by product UUID
  *       - in: query
  *         name: status
  *         schema:
@@ -74,8 +74,9 @@ router.get(
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Batch ID
+ *           type: string
+ *           format: uuid
+ *         description: Batch UUID
  *     responses:
  *       200:
  *         description: Batch details
@@ -117,29 +118,75 @@ router.get(
  *               - plannedQuantity
  *             properties:
  *               productId:
- *                 type: integer
- *                 example: 1
+ *                 type: string
+ *                 description: Product UUID (from GET /api/products)
+ *                 example: "550e8400-e29b-41d4-a716-446655440000"
  *               batchName:
  *                 type: string
- *                 example: 2025-Q1-Factory-A
+ *                 description: Unique batch name per product
+ *                 example: "2025-Q1-Factory-A"
  *               manufacturingFacility:
  *                 type: string
- *                 example: Factory-A, Mumbai
+ *                 example: "Factory-A, Mumbai"
  *               productionLine:
  *                 type: string
- *                 example: Line-1
+ *                 example: "Line-1"
  *               startDate:
  *                 type: string
  *                 format: date-time
+ *                 example: "2025-01-15T10:00:00Z"
  *               plannedQuantity:
  *                 type: integer
+ *                 minimum: 1
  *                 example: 1000
  *               imageFile:
  *                 type: string
- *                 description: Optional image file path
+ *                 description: Optional image file URL
+ *                 example: "https://example.com/batch-image.jpg"
+ *           example:
+ *             productId: "550e8400-e29b-41d4-a716-446655440000"
+ *             batchName: "2025-Q1-Factory-A"
+ *             manufacturingFacility: "Factory-A, Mumbai"
+ *             productionLine: "Line-1"
+ *             startDate: "2025-01-15T10:00:00Z"
+ *             plannedQuantity: 1000
  *     responses:
  *       201:
- *         description: Batch created successfully
+ *         description: Batch and NFT collection created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Batch created successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     batch:
+ *                       $ref: '#/components/schemas/Batch'
+ *                     product:
+ *                       $ref: '#/components/schemas/Product'
+ *                     blockchain:
+ *                       type: object
+ *                       properties:
+ *                         productNft:
+ *                           type: string
+ *                           example: "7xK...xyz"
+ *                         productNftExplorer:
+ *                           type: string
+ *                           example: "https://explorer.solana.com/address/7xK...xyz?cluster=devnet"
+ *                         batchCollectionAddress:
+ *                           type: string
+ *                           example: "8yL...abc"
+ *                         batchExplorerLink:
+ *                           type: string
+ *                         batchMetadataUri:
+ *                           type: string
  *       404:
  *         description: Product not found
  *       409:
@@ -161,7 +208,9 @@ router.post(
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
+ *           format: uuid
+ *         description: Batch UUID
  *     requestBody:
  *       required: true
  *       content:
@@ -201,7 +250,9 @@ router.put(
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
+ *           format: uuid
+ *         description: Batch UUID
  *     responses:
  *       200:
  *         description: Batch deleted successfully
@@ -226,7 +277,9 @@ router.delete(
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
+ *           type: string
+ *           format: uuid
+ *         description: Batch UUID
  *     responses:
  *       200:
  *         description: Batch statistics

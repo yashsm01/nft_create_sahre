@@ -5,6 +5,9 @@
 
 import { Request, Response } from 'express';
 import { Product, Batch } from '../models';
+import { createProductMasterNFT } from '../../src/services/product';
+import { createUmiInstance } from '../../src/utils/umi';
+import { loadKeypair } from '../../src/utils/helpers';
 
 /**
  * Get all products
@@ -50,14 +53,13 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
 };
 
 /**
- * Get product by GTIN
+ * Get product by ID
  */
-export const getProductByGtin = async (req: Request, res: Response): Promise<void> => {
+export const getProductById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { gtin } = req.params;
+    const { id } = req.params;
 
-    const product = await Product.findOne({
-      where: { gtin },
+    const product = await Product.findByPk(id, {
       include: ['batches'], // Include associated batches
     });
 
@@ -84,7 +86,7 @@ export const getProductByGtin = async (req: Request, res: Response): Promise<voi
 };
 
 /**
- * Create new product
+ * Create new product with NFT
  */
 export const createProduct = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -98,20 +100,23 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
       specifications,
       warrantyMonths,
       imageUrl,
+      createNFT = true, // Default: automatically create NFT
     } = req.body;
 
-    // Check if GTIN already exists
-    const existingProduct = await Product.findOne({ where: { gtin } });
-    if (existingProduct) {
-      res.status(409).json({
-        success: false,
-        message: 'Product with this GTIN already exists',
-        data: { existingProduct },
-      });
-      return;
+    // Check if GTIN already exists (if provided)
+    if (gtin) {
+      const existingProduct = await Product.findOne({ where: { gtin } });
+      if (existingProduct) {
+        res.status(409).json({
+          success: false,
+          message: 'Product with this GTIN already exists',
+          data: { existingProduct },
+        });
+        return;
+      }
     }
 
-    // Create product
+    // Create product (UUID is auto-generated)
     const product = await Product.create({
       gtin,
       productName,
@@ -125,10 +130,63 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
       isActive: true,
     });
 
+    let nftResult: { productNft: any; explorerLink: string; metadataUri: string; } | null = null;
+
+    // Automatically create NFT if requested
+    if (createNFT) {
+      try {
+        console.log('Creating Product Master NFT on blockchain...');
+
+        // Initialize Umi
+        const keypair = await loadKeypair();
+        const rpcEndpoint = process.env.SOLANA_RPC_ENDPOINT || 'https://api.devnet.solana.com';
+        const umi = createUmiInstance(rpcEndpoint, keypair);
+        const cluster = (process.env.SOLANA_CLUSTER as "devnet" | "testnet" | "mainnet-beta") || "devnet";
+
+        // Create Product Master NFT
+        nftResult = await createProductMasterNFT(
+          umi,
+          {
+            gtin: product.gtin || product.id, // Use UUID if no GTIN
+            productName: product.productName,
+            company: product.company,
+            category: product.category,
+            model: product.model || undefined,
+            description: product.description || undefined,
+            specifications: product.specifications || undefined,
+            warrantyMonths: product.warrantyMonths || undefined,
+            imageUrl: product.imageUrl || undefined,
+          },
+          cluster
+        );
+
+        // Update product with NFT information
+        if (nftResult) {
+          await product.update({
+            nftMintAddress: nftResult.productNft.toString(),
+            nftMetadataUri: nftResult.metadataUri,
+            nftExplorerLink: nftResult.explorerLink,
+          });
+        }
+
+        console.log('✅ Product Master NFT created successfully');
+      } catch (nftError: any) {
+        console.error('⚠️  Failed to create NFT (product saved):', nftError.message);
+        // Product is still created, just without NFT
+      }
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Product created successfully',
-      data: product,
+      message: nftResult ? 'Product and NFT created successfully' : 'Product created successfully',
+      data: {
+        product,
+        blockchain: nftResult ? {
+          nftMintAddress: nftResult?.productNft?.toString() || null,
+          explorerLink: nftResult?.explorerLink || null,
+          metadataUri: nftResult?.metadataUri || null,
+        } : null,
+      },
     });
   } catch (error: any) {
     console.error('Error creating product:', error);
@@ -145,10 +203,10 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
  */
 export const updateProduct = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { gtin } = req.params;
+    const { id } = req.params;
     const updates = req.body;
 
-    const product = await Product.findOne({ where: { gtin } });
+    const product = await Product.findByPk(id);
 
     if (!product) {
       res.status(404).json({
@@ -158,8 +216,11 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Don't allow GTIN changes
-    delete updates.gtin;
+    // Don't allow ID or NFT field changes
+    delete updates.id;
+    delete updates.nftMintAddress;
+    delete updates.nftMetadataUri;
+    delete updates.nftExplorerLink;
 
     await product.update(updates);
 
@@ -183,9 +244,9 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
  */
 export const deactivateProduct = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { gtin } = req.params;
+    const { id } = req.params;
 
-    const product = await Product.findOne({ where: { gtin } });
+    const product = await Product.findByPk(id);
 
     if (!product) {
       res.status(404).json({
@@ -216,9 +277,9 @@ export const deactivateProduct = async (req: Request, res: Response): Promise<vo
  */
 export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { gtin } = req.params;
+    const { id } = req.params;
 
-    const product = await Product.findOne({ where: { gtin } });
+    const product = await Product.findByPk(id);
 
     if (!product) {
       res.status(404).json({
@@ -260,10 +321,9 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
  */
 export const getProductStats = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { gtin } = req.params;
+    const { id } = req.params;
 
-    const product = await Product.findOne({
-      where: { gtin },
+    const product = await Product.findByPk(id, {
       include: ['batches'],
     });
 
@@ -282,9 +342,12 @@ export const getProductStats = async (req: Request, res: Response): Promise<void
     res.status(200).json({
       success: true,
       data: {
+        id: product.id,
         gtin: product.gtin,
         productName: product.productName,
         company: product.company,
+        nftMintAddress: product.nftMintAddress,
+        nftExplorerLink: product.nftExplorerLink,
         totalBatches: batches.length,
         totalPlannedItems: totalPlanned,
         totalProducedItems: totalProduced,

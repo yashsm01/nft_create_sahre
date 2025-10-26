@@ -18,8 +18,8 @@ const router = express.Router();
  *       - in: query
  *         name: batchId
  *         schema:
- *           type: integer
- *         description: Filter by batch ID
+ *           type: string
+ *         description: Filter by batch UUID
  *       - in: query
  *         name: qualityStatus
  *         schema:
@@ -84,23 +84,31 @@ router.get('/:serialNumber', itemController.getItemBySerial);
  *               - manufacturingOperator
  *             properties:
  *               batchId:
- *                 type: integer
- *                 example: 1
+ *                 type: string
+ *                 format: uuid
+ *                 description: Batch UUID (from GET /api/batches)
+ *                 example: "660e8400-e29b-41d4-a716-446655440001"
  *               serialNumber:
  *                 type: string
- *                 example: GTIN-8901234567890-2025Q1-00001
+ *                 example: "PROD-2025-Q1A-00001"
  *               manufacturingOperator:
  *                 type: string
- *                 example: John Doe
+ *                 example: "John Doe"
  *               qualityInspector:
  *                 type: string
+ *                 example: "Jane Smith"
  *               qualityNotes:
  *                 type: string
  *               additionalAttributes:
  *                 type: object
+ *           example:
+ *             batchId: "660e8400-e29b-41d4-a716-446655440001"
+ *             serialNumber: "PROD-2025-Q1A-00001"
+ *             manufacturingOperator: "John Doe"
+ *             qualityInspector: "Jane Smith"
  *     responses:
  *       201:
- *         description: Item created successfully
+ *         description: Item and NFT created successfully
  *       404:
  *         description: Batch not found
  *       409:

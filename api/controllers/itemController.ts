@@ -134,6 +134,15 @@ export const createItem = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    // Ensure product has NFT
+    if (!product.nftMintAddress) {
+      res.status(400).json({
+        success: false,
+        message: 'Product does not have NFT. Create product NFT first.',
+      });
+      return;
+    }
+
     // Check if item already exists
     const existingItem = await Item.findOne({ where: { serialNumber } });
     if (existingItem) {
@@ -155,6 +164,7 @@ export const createItem = async (req: Request, res: Response): Promise<void> => 
 
     const itemConfig: ProductConfig = {
       serialNumber,
+      productCollection: publicKey(product.nftMintAddress!),
       batchCollection: publicKey(batch.nftCollectionAddress!),
       batchId: `BATCH-${batch.id}`,
       productName: product.productName,

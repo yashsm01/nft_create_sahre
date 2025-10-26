@@ -48,6 +48,7 @@ export interface ManufacturingDetails {
  */
 export interface BatchConfig {
   batchId: string;                 // Unique batch identifier
+  productCollection?: UmiPublicKey; // Product Master NFT address (optional)
   productLine: string;              // Product line name
   productModel: string;             // Product model/type
   totalUnits: number;               // Expected units in batch
@@ -62,6 +63,7 @@ export interface BatchConfig {
  */
 export interface ProductConfig {
   serialNumber: string;             // Generated unique serial
+  productCollection: UmiPublicKey;  // Product Master NFT address
   batchCollection: UmiPublicKey;    // Batch collection it belongs to
   batchId: string;                  // Batch identifier (for metadata)
   productName: string;              // Product name
@@ -80,6 +82,7 @@ export interface ProductConfig {
  */
 export interface BatchCreationResult {
   batchCollection: UmiPublicKey;
+  productCollection?: UmiPublicKey;
   batchId: string;
   explorerLink: string;
   metadataUri: string;

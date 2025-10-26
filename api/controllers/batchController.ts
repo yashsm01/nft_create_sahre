@@ -9,6 +9,7 @@ import { createBatchCollection } from '../../src/services/product';
 import { BatchConfig } from '../../src/types/product';
 import { createUmiInstance } from '../../src/utils/umi';
 import { loadKeypair } from '../../src/utils/helpers';
+import { publicKey } from '@metaplex-foundation/umi';
 
 /**
  * Get all batches
@@ -111,14 +112,8 @@ export const createBatch = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // Ensure product has GTIN
-    if (!product.gtin) {
-      res.status(400).json({
-        success: false,
-        message: 'Product does not have a GTIN code. Please update the product first.',
-      });
-      return;
-    }
+    // Use GTIN if available, otherwise use UUID for batch identification
+    const productIdentifier = product.gtin || product.id;
 
     // Check if batch name already exists for this product
     const existingBatch = await Batch.findOne({
@@ -147,18 +142,19 @@ export const createBatch = async (req: Request, res: Response): Promise<void> =>
 
     const batchConfig: BatchConfig = {
       batchId: shortBatchName, // Use shorter ID
+      productCollection: product.nftMintAddress ? publicKey(product.nftMintAddress) : undefined,
       productLine: shortProductName,
       productModel: product.model || product.productName,
       totalUnits: plannedQuantity,
       manufacturingDate: new Date(startDate).toISOString(),
       factoryLocation: manufacturingFacility,
-      description: `Manufacturing batch ${batchName} for ${product.productName} (GTIN: ${product.gtin}) at ${productionLine}. Full ID: ${product.gtin}-${batchName}`,
+      description: `Manufacturing batch ${batchName} for ${product.productName} (${product.gtin ? 'GTIN: ' + product.gtin : 'ID: ' + product.id}) at ${productionLine}`,
       imageFile: imageFile || product.imageUrl,
     };
 
     const nftResult = await createBatchCollection(umi, batchConfig, cluster);
 
-    // Save batch to database
+    // Save batch to database with product NFT reference
     const batch = await Batch.create({
       batchName,
       productId,
@@ -168,9 +164,15 @@ export const createBatch = async (req: Request, res: Response): Promise<void> =>
       plannedQuantity,
       producedQuantity: 0,
       status: 'IN_PROGRESS',
+      productNftReference: product.nftMintAddress || undefined, // Reference to Product Master NFT
       nftCollectionAddress: nftResult.batchCollection.toString(),
       nftCollectionExplorerLink: nftResult.explorerLink,
-      metadata: { metadataUri: nftResult.metadataUri },
+      metadata: {
+        metadataUri: nftResult.metadataUri,
+        productNft: product.nftMintAddress || null,
+        productNftExplorer: product.nftExplorerLink || null,
+        productCollection: product.nftMintAddress ? publicKey(product.nftMintAddress) : undefined,
+      },
     });
 
     res.status(201).json({
@@ -180,9 +182,11 @@ export const createBatch = async (req: Request, res: Response): Promise<void> =>
         batch,
         product,
         blockchain: {
-          collectionAddress: nftResult.batchCollection.toString(),
-          explorerLink: nftResult.explorerLink,
-          metadataUri: nftResult.metadataUri,
+          productNft: product.nftMintAddress || null,
+          productNftExplorer: product.nftExplorerLink || null,
+          batchCollectionAddress: nftResult.batchCollection.toString(),
+          batchExplorerLink: nftResult.explorerLink,
+          batchMetadataUri: nftResult.metadataUri,
         },
       },
     });

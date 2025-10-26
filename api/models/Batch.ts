@@ -9,9 +9,9 @@ import Product from './Product';
 
 // Batch attributes interface
 export interface BatchAttributes {
-  id: number;
+  id: string;  // UUID
   batchName: string;  // Unique per product (can repeat across products)
-  productId: number;  // Foreign key to Product
+  productId: string;  // Foreign key to Product (UUID)
   manufacturingFacility: string;
   productionLine: string;
   startDate: Date;
@@ -19,6 +19,7 @@ export interface BatchAttributes {
   plannedQuantity: number;
   producedQuantity: number;
   status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  productNftReference?: string;  // Reference to Product Master NFT
   nftCollectionAddress?: string;
   nftCollectionExplorerLink?: string;
   metadata?: object;
@@ -27,7 +28,7 @@ export interface BatchAttributes {
 }
 
 // Optional fields for creation
-interface BatchCreationAttributes extends Optional<BatchAttributes, 'id' | 'producedQuantity' | 'endDate' | 'status' | 'nftCollectionAddress' | 'nftCollectionExplorerLink' | 'metadata'> {}
+interface BatchCreationAttributes extends Optional<BatchAttributes, 'id' | 'producedQuantity' | 'endDate' | 'status' | 'productNftReference' | 'nftCollectionAddress' | 'nftCollectionExplorerLink' | 'metadata'> { }
 
 /**
  * Batch Model Class
@@ -45,16 +46,19 @@ interface BatchCreationAttributes extends Optional<BatchAttributes, 'id' | 'prod
  *         - plannedQuantity
  *       properties:
  *         id:
- *           type: integer
- *           description: Auto-generated ID
+ *           type: string
+ *           format: uuid
+ *           description: Auto-generated batch UUID
+ *           example: "660e8400-e29b-41d4-a716-446655440001"
  *         batchName:
  *           type: string
  *           description: Batch name (unique per product)
- *           example: 2025-Q1-Factory-A
+ *           example: "2025-Q1-Factory-A"
  *         productId:
- *           type: integer
- *           description: Product ID (GTIN owner)
- *           example: 1
+ *           type: string
+ *           format: uuid
+ *           description: Product UUID
+ *           example: "550e8400-e29b-41d4-a716-446655440000"
  *         manufacturingFacility:
  *           type: string
  *           description: Facility where batch is manufactured
@@ -88,9 +92,9 @@ interface BatchCreationAttributes extends Optional<BatchAttributes, 'id' | 'prod
  *           description: Solana NFT collection address
  */
 class Batch extends Model<BatchAttributes, BatchCreationAttributes> implements BatchAttributes {
-  declare id: number;
+  declare id: string;
   declare batchName: string;
-  declare productId: number;
+  declare productId: string;
   declare manufacturingFacility: string;
   declare productionLine: string;
   declare startDate: Date;
@@ -98,6 +102,7 @@ class Batch extends Model<BatchAttributes, BatchCreationAttributes> implements B
   declare plannedQuantity: number;
   declare producedQuantity: number;
   declare status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  declare productNftReference?: string;
   declare nftCollectionAddress?: string;
   declare nftCollectionExplorerLink?: string;
   declare metadata?: object;
@@ -110,8 +115,8 @@ class Batch extends Model<BatchAttributes, BatchCreationAttributes> implements B
 Batch.init(
   {
     id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
     batchName: {
@@ -123,7 +128,7 @@ Batch.init(
       comment: 'Batch name (unique per product, can repeat across products)',
     },
     productId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.UUID,
       allowNull: false,
       references: {
         model: 'products',
@@ -165,6 +170,11 @@ Batch.init(
       type: DataTypes.ENUM('PLANNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'),
       allowNull: false,
       defaultValue: 'PLANNED',
+    },
+    productNftReference: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: 'Reference to Product Master NFT address',
     },
     nftCollectionAddress: {
       type: DataTypes.STRING(100),

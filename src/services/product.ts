@@ -37,6 +37,137 @@ export function generateSerialNumber(config: ProductSerialConfig): string {
 }
 
 /**
+ * Create a Product Master NFT
+ * 
+ * This represents the master product definition (GTIN) on blockchain
+ * All batches and items will reference this master product NFT
+ */
+export async function createProductMasterNFT(
+  umi: Umi,
+  productData: {
+    gtin: string;
+    productName: string;
+    company: string;
+    category: string;
+    model?: string;
+    description?: string;
+    specifications?: any;
+    warrantyMonths?: number;
+    imageUrl?: string;
+  },
+  cluster: "devnet" | "testnet" | "mainnet-beta"
+): Promise<{
+  productNft: any;
+  explorerLink: string;
+  metadataUri: string;
+}> {
+  console.log(`\n🏭 Creating Product Master NFT`);
+  console.log(`GTIN: ${productData.gtin}`);
+  console.log(`Product: ${productData.productName}`);
+  console.log(`Company: ${productData.company}`);
+
+  // Generate product mint
+  const productMint = generateSigner(umi);
+
+  // Prepare metadata attributes
+  const attributes = [
+    {
+      trait_type: "GTIN",
+      value: productData.gtin,
+    },
+    {
+      trait_type: "Company",
+      value: productData.company,
+    },
+    {
+      trait_type: "Category",
+      value: productData.category,
+    },
+  ];
+
+  if (productData.model) {
+    attributes.push({
+      trait_type: "Model",
+      value: productData.model,
+    });
+  }
+
+  if (productData.warrantyMonths) {
+    attributes.push({
+      trait_type: "Warranty",
+      value: `${productData.warrantyMonths} months`,
+    });
+  }
+
+  if (productData.specifications) {
+    Object.entries(productData.specifications).forEach(([key, value]) => {
+      attributes.push({
+        trait_type: key,
+        value: String(value),
+      });
+    });
+  }
+
+  // Upload product metadata
+  console.log(`\n📤 Uploading product master metadata...`);
+
+  // Create short symbol from GTIN (last 8 digits)
+  const shortSymbol = `PROD${productData.gtin.slice(-6)}`;
+
+  const productMetadata = {
+    name: productData.productName.substring(0, 32), // Max 32 chars for Metaplex
+    symbol: shortSymbol.substring(0, 10), // Max 10 chars
+    description: productData.description || `Master product definition for ${productData.productName} (GTIN: ${productData.gtin}) by ${productData.company}`,
+    image: productData.imageUrl || "",
+    attributes,
+    properties: {
+      category: "product_master",
+      gtin: productData.gtin,
+      company: productData.company,
+      product_category: productData.category,
+      model: productData.model || "",
+      specifications: productData.specifications || {},
+      warranty_months: productData.warrantyMonths || 0,
+    },
+  };
+
+  const metadataUri = await umi.uploader.uploadJson(productMetadata);
+  console.log(`✅ Metadata uploaded: ${metadataUri}`);
+
+  // Create product master NFT
+  console.log(`\n🎨 Creating product master NFT...`);
+
+  await createNft(umi, {
+    mint: productMint,
+    name: productMetadata.name,
+    symbol: productMetadata.symbol,
+    uri: metadataUri,
+    sellerFeeBasisPoints: percentAmount(0),
+    isCollection: false, // Master product is not a collection
+    creators: [
+      {
+        address: umi.identity.publicKey,
+        verified: true,
+        share: 100,
+      },
+    ],
+  }).sendAndConfirm(umi);
+
+  console.log(`✅ Product Master NFT created: ${productMint.publicKey}`);
+
+  const explorerLink = getExplorerLinkForAddress(
+    productMint.publicKey,
+    cluster
+  );
+
+  return {
+    productNft: productMint.publicKey,
+    explorerLink,
+    metadataUri,
+  };
+}
+
+/**
  * Create a batch collection NFT
  * 
  * This represents a manufacturing batch that will contain multiple product NFTs
@@ -56,7 +187,7 @@ export async function createBatchCollection(
 
   // Upload collection metadata
   console.log(`\n📤 Uploading batch metadata...`);
-  
+
   const collectionMetadata = {
     name: `${config.productLine} - ${config.batchId}`,
     symbol: config.batchId.replace(/-/g, "").substring(0, 10).toUpperCase(),
@@ -87,10 +218,15 @@ export async function createBatchCollection(
         trait_type: "Factory Location",
         value: config.factoryLocation,
       },
+      ...(config.productCollection ? [{
+        trait_type: "Product Master NFT",
+        value: config.productCollection.toString(),
+      }] : []),
     ],
     properties: {
       category: "batch_collection",
       batch_id: config.batchId,
+      product_master: config.productCollection?.toString() || null,
       product_line: config.productLine,
       product_model: config.productModel,
       total_units: config.totalUnits,
@@ -103,7 +239,7 @@ export async function createBatchCollection(
 
   // Create collection NFT
   console.log(`\n🎨 Creating collection NFT...`);
-  
+
   await createNft(umi, {
     mint: collectionMint,
     name: collectionMetadata.name,
@@ -118,6 +254,12 @@ export async function createBatchCollection(
         share: 100,
       },
     ],
+    ...(config.productCollection && {
+      collection: {
+        key: config.productCollection,
+        verified: false,
+      },
+    }),
   }).sendAndConfirm(umi);
 
   console.log(`✅ Batch collection created: ${collectionMint.publicKey}`);
@@ -129,6 +271,7 @@ export async function createBatchCollection(
 
   return {
     batchCollection: collectionMint.publicKey,
+    productCollection: config.productCollection,
     batchId: config.batchId,
     explorerLink,
     metadataUri,
@@ -233,13 +376,13 @@ export async function createProductNFT(
 
   // Upload product metadata
   console.log(`\n📤 Uploading product metadata...`);
-  
+
   // Extract just the sequence number from serial (last 5 digits)
-  const sequenceNumber = config.serialNumber.split('-').pop() || '00000';
-  
+  const sequenceNumber = config.serialNumber;
+
   const productMetadata = {
-    name: `Product #${sequenceNumber}`,  // Short name: "Product #00001" (max 32 chars)
-    symbol: `PROD${sequenceNumber}`,     // Symbol: "PROD00001" (max 10 chars)
+    name: `${sequenceNumber}`,  // Short name: "Product #00001" (max 32 chars)
+    symbol: `${'00000'}`,     // Symbol: "PROD00001" (max 10 chars)
     description: `Manufacturing certificate for ${config.productModel} - Serial: ${config.serialNumber}`,
     image: config.imageFile || "",
     attributes,
@@ -247,6 +390,8 @@ export async function createProductNFT(
       category: "product_nft",
       serial_number: config.serialNumber,
       batch_id: config.batchId,
+      product_master: config.productCollection.toString(),
+      batch_collection: config.batchCollection.toString(),
       product_model: config.productModel,
       manufacturing_details: config.manufacturingDetails,
       quality_inspection: config.qualityInspection || null,
@@ -259,7 +404,7 @@ export async function createProductNFT(
 
   // Create product NFT
   console.log(`\n🎨 Creating product NFT...`);
-  
+
   await createNft(umi, {
     mint: productMint,
     name: productMetadata.name,
@@ -345,6 +490,7 @@ export async function verifyProductInBatch(
 export async function createProductsBatch(
   umi: Umi,
   batchCollection: string,
+  productCollection: string,
   batchId: string,
   productModel: string,
   productName: string,
@@ -354,7 +500,7 @@ export async function createProductsBatch(
   cluster: "devnet" | "testnet" | "mainnet-beta"
 ): Promise<ProductCreationResult[]> {
   console.log(`\n🏭 Batch creating ${count} products...`);
-  
+
   const results: ProductCreationResult[] = [];
   const year = new Date().getFullYear();
 
@@ -375,6 +521,7 @@ export async function createProductsBatch(
         {
           serialNumber,
           batchCollection: createPublicKey(batchCollection),
+          productCollection: createPublicKey(productCollection),
           batchId,
           productName,
           productModel,
@@ -391,7 +538,7 @@ export async function createProductsBatch(
   }
 
   console.log(`\n✅ Batch creation complete! Created ${results.length}/${count} products`);
-  
+
   return results;
 }
 
