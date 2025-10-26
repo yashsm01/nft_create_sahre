@@ -19,6 +19,7 @@ import healthRoutes from './routes/healthRoutes';
 import productRoutes from './routes/productRoutes';
 import batchRoutes from './routes/batchRoutes';
 import itemRoutes from './routes/itemRoutes';
+import fractionalizeRoutes from './routes/fractionalizeRoutes';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -85,6 +86,7 @@ app.get('/', (req, res) => {
       products: '/api/products',
       batches: '/api/batches',
       items: '/api/items',
+      fractionalize: '/api/fractionalize',
     },
   });
 });
@@ -96,6 +98,7 @@ app.use('/api/health', healthRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/items', itemRoutes);
+app.use('/api/fractionalize', fractionalizeRoutes);
 
 /**
  * Error Handling
@@ -149,7 +152,9 @@ const startServer = async () => {
       console.log('   • PUT  /api/batches/:id      - Update/top up batch');
       console.log('   • GET  /api/items            - List items');
       console.log('   • POST /api/items            - Create item NFT');
-      console.log('   • GET  /api/items/:serial/verify - Verify item\n');
+      console.log('   • GET  /api/items/:serial/verify - Verify item');
+      console.log('   • POST /api/fractionalize    - Fractionalize NFT');
+      console.log('   • POST /api/fractionalize/distribute - Distribute shares\n');
       console.log('═════════════════════════════════════════════════════\n');
       console.log('✨ Ready to accept requests!\n');
     });

@@ -11,21 +11,33 @@ const options: swaggerJsdoc.Options = {
       title: 'Product Tracking API',
       version: '1.0.0',
       description: `
-        Blockchain-powered Product Traceability System API
+        Blockchain-powered Product Traceability & NFT Fractionalization API
         
         ## Features
-        - 🏭 Batch Management
-        - 📦 Product NFT Creation
+        - 🏭 Product Management (GTIN-based)
+        - 📦 Batch Collections (NFT)
+        - 🏷️ Individual Item NFTs
+        - 🔨 NFT Fractionalization with Metadata
+        - 📤 Share Distribution with Tracking
         - ✅ Quality Inspection Records
         - 🔍 Product Verification
-        - 📊 Manufacturing Analytics
+        - 📊 Analytics & Reporting
         - 🔗 Blockchain Integration (Solana/Metaplex)
+        - 💾 Complete Database Tracking
         
         ## Architecture
         - Express.js + TypeScript
         - PostgreSQL + Sequelize ORM
-        - Solana NFT Integration
+        - Solana Blockchain (SPL Token + Metaplex)
+        - Arweave for Permanent Storage
         - RESTful API Design
+        
+        ## Fractionalization
+        Split NFTs into fungible share tokens with rich metadata including:
+        - Custom token name and symbol
+        - Creator information tracking
+        - Transfer recipient tracking
+        - Complete history in database
       `,
       contact: {
         name: 'API Support',
@@ -48,12 +60,20 @@ const options: swaggerJsdoc.Options = {
     ],
     tags: [
       {
-        name: 'Batches',
-        description: 'Manufacturing batch management'
+        name: 'Products',
+        description: 'Product (GTIN) management'
       },
       {
-        name: 'Products',
-        description: 'Product NFT creation and management'
+        name: 'Batches',
+        description: 'Manufacturing batch management with NFT collections'
+      },
+      {
+        name: 'Items',
+        description: 'Individual product items with NFTs'
+      },
+      {
+        name: 'Fractionalization',
+        description: 'NFT fractionalization and share token distribution with metadata tracking'
       },
       {
         name: 'Quality',

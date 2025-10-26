@@ -4,22 +4,27 @@
  * This service allows you to split an NFT into multiple fungible token shares
  * that can be distributed and traded independently.
  * 
- * FIXED: Now uses SPL Token program directly instead of Metaplex Token Metadata
+ * ENHANCED: Now includes Metaplex metadata for share tokens with name, symbol, and creator info
  */
 
 import {
   Umi,
   PublicKey as UmiPublicKey,
   publicKey,
+  generateSigner,
+  percentAmount,
 } from "@metaplex-foundation/umi";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { 
-  createMint, 
-  getOrCreateAssociatedTokenAccount, 
+import {
+  createMint,
+  getOrCreateAssociatedTokenAccount,
   mintTo,
   transfer,
 } from "@solana/spl-token";
-import { FractionalizeConfig, FractionalizeResult, ShareDistribution, ShareTransferResult } from "../types/fractionalize.js";
+import {
+  createFungible,
+} from "@metaplex-foundation/mpl-token-metadata";
+import { FractionalizeConfig, FractionalizeResult, ShareDistribution, ShareTransferResult, TokenMetadata } from "../types/fractionalize.js";
 import { loadKeypair } from "../utils/helpers.js";
 
 /**
@@ -36,37 +41,26 @@ import { loadKeypair } from "../utils/helpers.js";
  * @returns Fractionalization result
  */
 export async function fractionalizeNFT(
-  umi: Umi,
-  config: FractionalizeConfig,
-  cluster: "devnet" | "testnet" | "mainnet-beta"
+  connection: Connection,
+  payer: Keypair,
+  nftMintAddress: string,
+  totalShares: number,
+  shareDecimals: number = 0,
+  cluster: "devnet" | "testnet" | "mainnet-beta" = "devnet"
 ): Promise<FractionalizeResult> {
-  console.log(`\n🔨 Fractionalizing NFT into ${config.totalShares} shares...`);
-  console.log(`NFT Mint: ${config.nftMint}`);
-  console.log(`Share Name: ${config.shareName}`);
-  console.log(`Share Symbol: ${config.shareSymbol}`);
-  console.log(`Total Shares: ${config.totalShares}`);
-
-  // Get RPC endpoint based on cluster
-  const rpcEndpoint = cluster === "devnet" 
-    ? "https://api.devnet.solana.com"
-    : cluster === "testnet"
-    ? "https://api.testnet.solana.com"
-    : "https://api.mainnet-beta.solana.com";
-
-  const connection = new Connection(rpcEndpoint, "confirmed");
-
-  // Load the keypair directly
-  const payer = await loadKeypair();
+  console.log(`\n🔨 Fractionalizing NFT into ${totalShares} shares...`);
+  console.log(`NFT Mint: ${nftMintAddress}`);
+  console.log(`Total Shares: ${totalShares}`);
 
   console.log(`\n📤 Creating share token mint...`);
 
-  // Create the token mint (fungible token with 0 decimals)
+  // Create the token mint (fungible token)
   const mint = await createMint(
     connection,
     payer,              // Payer
     payer.publicKey,    // Mint authority
     payer.publicKey,    // Freeze authority
-    0                   // 0 decimals - shares are whole numbers
+    shareDecimals       // Decimals
   );
 
   console.log(`✅ Share token mint created: ${mint.toBase58()}`);
@@ -83,18 +77,18 @@ export async function fractionalizeNFT(
   console.log(`✅ Token account created: ${tokenAccount.address.toBase58()}`);
 
   // Mint all shares to the creator
-  console.log(`\n🪙 Minting ${config.totalShares} shares...`);
-  
+  console.log(`\n🪙 Minting ${totalShares} shares...`);
+
   await mintTo(
     connection,
     payer,
     mint,
     tokenAccount.address,
     payer,              // Mint authority
-    config.totalShares
+    totalShares
   );
 
-  console.log(`✅ Minted ${config.totalShares} shares to your wallet`);
+  console.log(`✅ Minted ${totalShares} shares to your wallet`);
 
   const explorerLink = `https://explorer.solana.com/address/${mint.toBase58()}?cluster=${cluster}`;
 
@@ -104,8 +98,129 @@ export async function fractionalizeNFT(
 
   return {
     shareTokenMint: mint.toBase58(),
-    totalShares: config.totalShares,
+    totalShares,
+    tokenName: "Share Token",
+    tokenSymbol: "SHARE",
+    creator: payer.publicKey.toBase58(),
     explorerLink,
+  };
+}
+
+/**
+ * Create fractional shares with Metaplex metadata
+ * 
+ * @param umi - Umi instance
+ * @param nftMintAddress - Original NFT
+ * @param tokenName - Token name
+ * @param tokenSymbol - Token symbol
+ * @param totalShares - Number of shares
+ * @param creatorName - Creator name
+ * @param creatorId - Creator ID
+ * @param description - Description
+ * @param imageUrl - Image URL
+ * @param shareDecimals - Decimals
+ * @param cluster - Cluster
+ * @returns Fractionalization result
+ */
+export async function fractionalizeNFTWithMetadata(
+  umi: Umi,
+  nftMintAddress: string,
+  tokenName: string,
+  tokenSymbol: string,
+  totalShares: number,
+  creatorName: string,
+  creatorId?: string,
+  description?: string,
+  imageUrl?: string,
+  shareDecimals: number = 0,
+  cluster: "devnet" | "testnet" | "mainnet-beta" = "devnet"
+): Promise<FractionalizeResult> {
+  console.log(`\n🔨 Fractionalizing NFT with metadata...`);
+  console.log(`NFT Mint: ${nftMintAddress}`);
+  console.log(`Token Name: ${tokenName}`);
+  console.log(`Token Symbol: ${tokenSymbol}`);
+  console.log(`Total Shares: ${totalShares}`);
+  console.log(`Creator: ${creatorName}`);
+
+  // Upload metadata
+  console.log(`\n📤 Uploading metadata...`);
+  const metadataJson = {
+    name: tokenName,
+    symbol: tokenSymbol,
+    description: description || `Fractional shares of NFT ${nftMintAddress.slice(0, 8)}... - ${totalShares} shares`,
+    image: imageUrl || "",
+    attributes: [
+      { trait_type: "Original NFT", value: nftMintAddress },
+      { trait_type: "Total Shares", value: totalShares.toString() },
+      { trait_type: "Creator Name", value: creatorName },
+      ...(creatorId ? [{ trait_type: "Creator ID", value: creatorId }] : []),
+      { trait_type: "Created At", value: new Date().toISOString() },
+    ],
+  };
+
+  const uri = await umi.uploader.uploadJson(metadataJson);
+  console.log(`✅ Metadata uploaded: ${uri}`);
+
+  // Create fungible token with metadata using SPL Token + Metaplex
+  console.log(`\n📦 Creating fungible token...`);
+  const mint = generateSigner(umi);
+
+  // Step 1: Create the mint using createFungible (this creates both mint and metadata)
+  await createFungible(umi, {
+    mint,
+    name: tokenName.slice(0, 32),
+    symbol: tokenSymbol.slice(0, 10),
+    uri,
+    sellerFeeBasisPoints: percentAmount(0),
+    decimals: shareDecimals,
+  }).sendAndConfirm(umi);
+
+  console.log(`✅ Token created: ${mint.publicKey}`);
+
+  // Step 2: Use SPL Token to mint shares (not Metaplex mintV1)
+  console.log(`\n🪙 Minting ${totalShares} shares...`);
+
+  // Load the keypair for SPL Token operations
+  const keypair = await loadKeypair();
+  const rpcEndpoint = cluster === "devnet"
+    ? "https://api.devnet.solana.com"
+    : cluster === "testnet"
+      ? "https://api.testnet.solana.com"
+      : "https://api.mainnet-beta.solana.com";
+
+  const connection = new Connection(rpcEndpoint, "confirmed");
+  const mintPubkey = new PublicKey(mint.publicKey.toString());
+
+  // Get or create associated token account
+  const tokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,
+    keypair,
+    mintPubkey,
+    keypair.publicKey
+  );
+
+  // Mint shares using SPL Token
+  await mintTo(
+    connection,
+    keypair,
+    mintPubkey,
+    tokenAccount.address,
+    keypair,
+    totalShares
+  );
+
+  console.log(`✅ Minted ${totalShares} shares`);
+
+  const explorerLink = `https://explorer.solana.com/address/${mint.publicKey}?cluster=${cluster}`;
+
+  return {
+    shareTokenMint: mint.publicKey.toString(),
+    totalShares,
+    tokenName,
+    tokenSymbol,
+    creator: umi.identity.publicKey.toString(),
+    explorerLink,
+    metadataUri: uri,
   };
 }
 
@@ -114,31 +229,26 @@ export async function fractionalizeNFT(
  * 
  * FIXED: Now uses SPL Token program directly for programmatic distribution
  * 
- * @param umi - The Umi instance
- * @param shareTokenMint - The share token mint address (as string)
+ * @param connection - Solana connection
+ * @param payer - Keypair for signing
+ * @param shareTokenMintAddress - The share token mint address
  * @param distributions - Array of recipients and amounts
  * @param cluster - The Solana cluster
- * @returns Array of transfer results
+ * @returns Distribution results
  */
 export async function distributeShares(
-  umi: Umi,
+  connection: Connection,
+  payer: Keypair,
   shareTokenMintAddress: string,
-  distributions: ShareDistribution[],
-  cluster: "devnet" | "testnet" | "mainnet-beta"
-): Promise<ShareTransferResult[]> {
+  distributions: Array<{ recipient: string; recipientName?: string; recipientId?: string; amount: number; note?: string }>,
+  cluster: "devnet" | "testnet" | "mainnet-beta" = "devnet"
+): Promise<{
+  distributions: Array<{ recipient: string; recipientName?: string; recipientId?: string; amount: number; status: string; signature?: string }>;
+  explorerLinks: string[];
+  transferredBy: string;
+  transferredAt: string;
+}> {
   console.log(`\n📤 Distributing shares to ${distributions.length} recipients...`);
-
-  // Get RPC endpoint based on cluster
-  const rpcEndpoint = cluster === "devnet" 
-    ? "https://api.devnet.solana.com"
-    : cluster === "testnet"
-    ? "https://api.testnet.solana.com"
-    : "https://api.mainnet-beta.solana.com";
-
-  const connection = new Connection(rpcEndpoint, "confirmed");
-
-  // Load the keypair directly
-  const payer = await loadKeypair();
 
   const shareTokenMint = new PublicKey(shareTokenMintAddress);
 
@@ -150,7 +260,8 @@ export async function distributeShares(
     payer.publicKey
   );
 
-  const results: ShareTransferResult[] = [];
+  const results = [];
+  const explorerLinks = [];
 
   // Process each distribution
   for (let i = 0; i < distributions.length; i++) {
@@ -183,27 +294,37 @@ export async function distributeShares(
       console.log(`   Signature: ${signature}`);
 
       const explorerLink = `https://explorer.solana.com/tx/${signature}?cluster=${cluster}`;
+      explorerLinks.push(explorerLink);
 
       results.push({
         recipient: dist.recipient,
+        recipientName: dist.recipientName,
+        recipientId: dist.recipientId,
         amount: dist.amount,
+        status: "success",
         signature: signature,
-        explorerLink: explorerLink,
       });
 
-    } catch (error) {
-      console.error(`❌ Failed to send to ${dist.recipient}:`, error);
+    } catch (error: any) {
+      console.error(`❌ Failed to send to ${dist.recipient}:`, error.message);
       results.push({
         recipient: dist.recipient,
+        recipientName: dist.recipientName,
+        recipientId: dist.recipientId,
         amount: dist.amount,
-        signature: "failed",
-        explorerLink: `https://explorer.solana.com/address/${dist.recipient}?cluster=${cluster}`,
+        status: "failed",
       });
     }
   }
 
-  console.log(`\n✨ Distribution complete! ${results.filter(r => r.signature !== "failed").length}/${distributions.length} successful`);
+  const successCount = results.filter(r => r.status === "success").length;
+  console.log(`\n✨ Distribution complete! ${successCount}/${distributions.length} successful`);
 
-  return results;
+  return {
+    distributions: results,
+    explorerLinks,
+    transferredBy: payer.publicKey.toBase58(),
+    transferredAt: new Date().toISOString(),
+  };
 }
 
