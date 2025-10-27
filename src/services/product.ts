@@ -683,3 +683,142 @@ export async function createProductsBatch(
   return results;
 }
 
+/**
+ * Fetch complete NFT details from Solana blockchain
+ * @param umi - Umi instance
+ * @param mintAddress - NFT mint address (public key)
+ * @param cluster - Solana cluster
+ * @returns Complete NFT details including on-chain and off-chain metadata
+ */
+export async function getNFTDetailsFromSolana(
+  umi: Umi,
+  mintAddress: string,
+  cluster: "devnet" | "testnet" | "mainnet-beta"
+): Promise<{
+  success: boolean;
+  mintAddress: string;
+  onChainMetadata: {
+    name: string;
+    symbol: string;
+    uri: string;
+    sellerFeeBasisPoints: number;
+    creators: any[];
+    primarySaleHappened: boolean;
+    isMutable: boolean;
+    editionNonce: number | null;
+    tokenStandard: string;
+    collection: any | null;
+    uses: any | null;
+    collectionDetails: any | null;
+    programmableConfig: any | null;
+  };
+  offChainMetadata: any | null;
+  explorerLink: string;
+  metadataAccount: string;
+}> {
+  console.log(`🔍 Fetching NFT details for: ${mintAddress}`);
+
+  try {
+    const mint = publicKey(mintAddress);
+
+    // Fetch on-chain metadata
+    console.log(`📡 Fetching on-chain metadata...`);
+    const metadata = await fetchMetadataFromSeeds(umi, { mint });
+
+    // Fetch off-chain metadata from URI
+    let offChainMetadata = null;
+    console.log(`📡 Fetching off-chain metadata from: ${metadata.uri}`);
+
+    try {
+      const response = await fetch(metadata.uri);
+
+      if (!response.ok) {
+        console.warn(`⚠️  Failed to fetch off-chain metadata: ${response.status} ${response.statusText}`);
+      } else {
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          offChainMetadata = await response.json();
+        } else {
+          console.warn(`⚠️  Unexpected content type: ${contentType}`);
+        }
+      }
+    } catch (fetchError: any) {
+      console.warn(`⚠️  Error fetching off-chain metadata:`, fetchError.message);
+    }
+
+    const explorerLink = getExplorerLinkForAddress(mint, cluster);
+
+    console.log(`✅ Successfully fetched NFT details`);
+
+    return {
+      success: true,
+      mintAddress: mint.toString(),
+      onChainMetadata: {
+        name: metadata.name,
+        symbol: metadata.symbol,
+        uri: metadata.uri,
+        sellerFeeBasisPoints: metadata.sellerFeeBasisPoints,
+        creators: metadata.creators ?
+          (metadata.creators as any) : [],
+        primarySaleHappened: metadata.primarySaleHappened,
+        isMutable: metadata.isMutable,
+        editionNonce: metadata.editionNonce ?
+          (metadata.editionNonce as any) : null,
+        tokenStandard: metadata.tokenStandard ?
+          Object.keys(metadata.tokenStandard)[0] : 'Unknown',
+        collection: metadata.collection,
+        uses: metadata.uses,
+        collectionDetails: metadata.collectionDetails,
+        programmableConfig: metadata.programmableConfig,
+      },
+      offChainMetadata,
+      explorerLink,
+      metadataAccount: metadata.publicKey.toString(),
+    };
+  } catch (error: any) {
+    console.error(`❌ Error fetching NFT details:`, error);
+    throw new Error(`Failed to fetch NFT details: ${error.message}`);
+  }
+}
+
+/**
+ * Fetch NFT details by metadata URI
+ * @param metadataUri - Arweave/IPFS URI
+ * @returns Off-chain metadata JSON
+ */
+export async function getNFTMetadataByUri(
+  metadataUri: string
+): Promise<{
+  success: boolean;
+  uri: string;
+  metadata: any;
+}> {
+  console.log(`🔍 Fetching metadata from URI: ${metadataUri}`);
+
+  try {
+    const response = await fetch(metadataUri);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType?.includes('application/json')) {
+      throw new Error(`Unexpected content type: ${contentType}`);
+    }
+
+    const metadata = await response.json();
+
+    console.log(`✅ Successfully fetched metadata from URI`);
+
+    return {
+      success: true,
+      uri: metadataUri,
+      metadata,
+    };
+  } catch (error: any) {
+    console.error(`❌ Error fetching metadata from URI:`, error);
+    throw new Error(`Failed to fetch metadata from URI: ${error.message}`);
+  }
+}
+

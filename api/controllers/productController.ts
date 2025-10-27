@@ -5,9 +5,10 @@
 
 import { Request, Response } from 'express';
 import { Product, Batch } from '../models';
-import { createProductMasterNFT, updateProductMasterNFT } from '../../src/services/product';
+import { createProductMasterNFT, updateProductMasterNFT, getNFTDetailsFromSolana, getNFTMetadataByUri } from '../../src/services/product';
 import { createUmiInstance } from '../../src/utils/umi';
 import { loadKeypair } from '../../src/utils/helpers';
+import { getArweaveWalletInfo, getUploadCost } from '../../src/utils/irys';
 
 /**
  * Get all products
@@ -162,10 +163,34 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
 
         // Update product with NFT information
         if (nftResult) {
+          // Prepare metadata JSON for database storage (fallback when Arweave unavailable)
+          const nftMetadataJson = {
+            name: product.productName.substring(0, 32),
+            symbol: `PROD${(product.gtin || product.id).slice(-6)}`.substring(0, 10),
+            description: product.description || `Master product definition for ${product.productName}`,
+            image: product.imageUrl || "",
+            attributes: [
+              { trait_type: "Company", value: product.company },
+              { trait_type: "Category", value: product.category },
+              ...(product.model ? [{ trait_type: "Model", value: product.model }] : []),
+              ...(product.warrantyMonths ? [{ trait_type: "Warranty", value: `${product.warrantyMonths} months` }] : []),
+            ],
+            properties: {
+              category: "product_master",
+              gtin: product.gtin || "",
+              company: product.company,
+              product_category: product.category,
+              model: product.model || "",
+              specifications: product.specifications || {},
+              warranty_months: product.warrantyMonths || 0,
+            },
+          };
+
           await product.update({
             nftMintAddress: nftResult.productNft.toString(),
             nftMetadataUri: nftResult.metadataUri,
             nftExplorerLink: nftResult.explorerLink,
+            metadata: nftMetadataJson,  // Store metadata in DB as fallback
           });
         }
 
@@ -445,6 +470,163 @@ export const getProductStats = async (req: Request, res: Response): Promise<void
     res.status(500).json({
       success: false,
       message: 'Failed to fetch product statistics',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get NFT details from Solana by mint address
+ * Includes database metadata fallback for devnet reliability
+ */
+export const getNFTDetails = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { mintAddress } = req.params;
+    const cluster = (process.env.SOLANA_CLUSTER as "devnet" | "testnet" | "mainnet-beta") || "devnet";
+
+    if (!mintAddress) {
+      res.status(400).json({
+        success: false,
+        message: 'Mint address is required',
+      });
+      return;
+    }
+
+    // Load keypair and create Umi instance
+    const keypair = await loadKeypair();
+    const rpcEndpoint = process.env.SOLANA_RPC_ENDPOINT || 'https://api.devnet.solana.com';
+    const umi = createUmiInstance(rpcEndpoint, keypair);
+
+    // Fetch NFT details from blockchain
+    const nftDetails = await getNFTDetailsFromSolana(umi, mintAddress, cluster);
+
+    let metadataSource = 'arweave';
+    let responseNote: string | undefined = undefined;
+
+    // If offChainMetadata is null, try to get from database as fallback
+    if (!nftDetails.offChainMetadata) {
+      console.log('⚠️  Arweave metadata unavailable, checking database...');
+      const product = await Product.findOne({ where: { nftMintAddress: mintAddress } });
+
+      if (product && product.metadata) {
+        console.log('✅ Using database metadata as fallback');
+        nftDetails.offChainMetadata = product.metadata;
+        metadataSource = 'database (Arweave unavailable)';
+        responseNote = 'Arweave data pending or unavailable - showing database copy';
+      } else {
+        metadataSource = 'not available';
+        responseNote = 'Metadata not available in Arweave or database';
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'NFT details fetched successfully',
+      data: {
+        ...nftDetails,
+        metadataSource,
+      },
+      note: responseNote,
+    });
+  } catch (error: any) {
+    console.error('Error fetching NFT details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch NFT details',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get metadata from URI (Arweave/IPFS)
+ */
+export const getMetadataByUri = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { uri } = req.query;
+
+    if (!uri || typeof uri !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'Metadata URI is required as query parameter',
+      });
+      return;
+    }
+
+    // Fetch metadata from URI
+    const metadata = await getNFTMetadataByUri(uri);
+
+    res.status(200).json({
+      success: true,
+      message: 'Metadata fetched successfully',
+      data: metadata,
+    });
+  } catch (error: any) {
+    console.error('Error fetching metadata:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch metadata from URI',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get Arweave/Irys configuration and upload cost estimates
+ */
+export const getArweaveConfig = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const walletInfo = getArweaveWalletInfo();
+
+    // Estimate costs for common upload sizes
+    const metadataSize = 2048; // ~2KB for typical NFT metadata
+    const imageSize = 512000; // ~500KB for typical image
+
+    const metadataCost = await getUploadCost(metadataSize);
+    const imageCost = await getUploadCost(imageSize);
+
+    res.status(200).json({
+      success: true,
+      message: 'Arweave configuration retrieved',
+      data: {
+        arweaveWallet: {
+          address: walletInfo.address || 'Not configured',
+          isConfigured: walletInfo.isConfigured,
+          explorerLink: walletInfo.address
+            ? `https://viewblock.io/arweave/address/${walletInfo.address}`
+            : null,
+        },
+        irysConfig: {
+          network: process.env.SOLANA_CLUSTER || 'devnet',
+          endpoint: process.env.IRYS_URL || 'https://devnet.irys.xyz',
+          paymentToken: 'SOL',
+        },
+        estimatedCosts: {
+          metadataUpload: {
+            sizeKB: metadataCost.sizeInKB,
+            costSOL: metadataCost.costInSOL,
+            note: 'Typical NFT metadata (JSON)',
+          },
+          imageUpload: {
+            sizeKB: imageCost.sizeInKB,
+            costSOL: imageCost.costInSOL,
+            note: 'Typical product image (500KB)',
+          },
+          note: 'Costs are approximate and may vary based on network conditions',
+        },
+        fundingInfo: {
+          message: 'Fund your Irys account with SOL to pay for uploads',
+          devnetUrl: 'https://devnet.irys.xyz',
+          mainnetUrl: 'https://irys.xyz',
+          yourSolanaAddress: 'Check /api/health for your address',
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error('Error fetching Arweave config:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch Arweave configuration',
       error: error.message,
     });
   }

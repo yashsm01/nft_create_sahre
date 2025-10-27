@@ -1,5 +1,20 @@
 /**
  * File and metadata upload utilities
+ * 
+ * This module handles uploading images and metadata to Arweave via Irys (formerly Bundlr).
+ * 
+ * Configuration:
+ * - Arweave Wallet: Set in .env as ARWEAVE_WALLET_ADDRESS (for tracking/reference)
+ * - Irys Endpoint: Set in .env as IRYS_URL (default: https://devnet.irys.xyz)
+ * - Payment: Uses SOL from your Solana keypair to pay for uploads
+ * 
+ * How it works:
+ * 1. Your Solana keypair (configured in Umi) identifies your Irys account
+ * 2. Irys bundles your data and posts it to Arweave
+ * 3. Data is stored permanently on Arweave
+ * 4. Returns permanent URI: https://arweave.net/[transaction-id]
+ * 
+ * Cost: ~0.000005 SOL per KB (approximate, varies by network conditions)
  */
 
 import { Umi, GenericFile, createGenericFile } from "@metaplex-foundation/umi";

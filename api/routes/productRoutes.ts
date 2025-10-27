@@ -349,4 +349,258 @@ router.delete('/:id', productController.deleteProduct);
  */
 router.get('/:id/stats', productController.getProductStats);
 
+/**
+ * @swagger
+ * /api/products/nft/{mintAddress}:
+ *   get:
+ *     summary: Get NFT details from Solana blockchain
+ *     description: Fetch complete NFT details including on-chain and off-chain metadata from Solana using the mint address
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: mintAddress
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Solana NFT mint address (public key)
+ *         example: "7EYnhQoR9YM3N7UoaKRoA44Uy8JeaZV3qyouov87awMs"
+ *     responses:
+ *       200:
+ *         description: NFT details fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "NFT details fetched successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     success:
+ *                       type: boolean
+ *                       example: true
+ *                     mintAddress:
+ *                       type: string
+ *                       example: "7EYnhQoR9YM3N7UoaKRoA44Uy8JeaZV3qyouov87awMs"
+ *                     onChainMetadata:
+ *                       type: object
+ *                       properties:
+ *                         name:
+ *                           type: string
+ *                           example: "Samsung Galaxy S23"
+ *                         symbol:
+ *                           type: string
+ *                           example: "PROD"
+ *                         uri:
+ *                           type: string
+ *                           example: "https://arweave.net/abc123..."
+ *                         sellerFeeBasisPoints:
+ *                           type: number
+ *                           example: 500
+ *                         creators:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                         primarySaleHappened:
+ *                           type: boolean
+ *                           example: false
+ *                         isMutable:
+ *                           type: boolean
+ *                           example: true
+ *                         tokenStandard:
+ *                           type: string
+ *                           example: "NonFungible"
+ *                     offChainMetadata:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         name:
+ *                           type: string
+ *                         description:
+ *                           type: string
+ *                         image:
+ *                           type: string
+ *                         attributes:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                     explorerLink:
+ *                       type: string
+ *                       example: "https://explorer.solana.com/address/7EYnhQoR9YM3N7UoaKRoA44Uy8JeaZV3qyouov87awMs?cluster=devnet"
+ *                     metadataAccount:
+ *                       type: string
+ *                       example: "8FZnhQoR9YM3N7UoaKRoA44Uy8JeaZV3qyouov87awMs"
+ *       400:
+ *         description: Invalid mint address
+ *       404:
+ *         description: NFT not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/nft/:mintAddress', productController.getNFTDetails);
+
+/**
+ * @swagger
+ * /api/products/metadata:
+ *   get:
+ *     summary: Get NFT metadata from URI
+ *     description: Fetch off-chain metadata JSON from Arweave/IPFS URI
+ *     tags: [Products]
+ *     parameters:
+ *       - in: query
+ *         name: uri
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Arweave or IPFS metadata URI
+ *         example: "https://arweave.net/abc123def456..."
+ *     responses:
+ *       200:
+ *         description: Metadata fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Metadata fetched successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     success:
+ *                       type: boolean
+ *                       example: true
+ *                     uri:
+ *                       type: string
+ *                       example: "https://arweave.net/abc123..."
+ *                     metadata:
+ *                       type: object
+ *                       properties:
+ *                         name:
+ *                           type: string
+ *                           example: "Samsung Galaxy S23"
+ *                         description:
+ *                           type: string
+ *                           example: "Premium smartphone with advanced features"
+ *                         image:
+ *                           type: string
+ *                           example: "https://example.com/image.png"
+ *                         attributes:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               trait_type:
+ *                                 type: string
+ *                               value:
+ *                                 type: string
+ *                         properties:
+ *                           type: object
+ *       400:
+ *         description: Invalid or missing URI
+ *       404:
+ *         description: Metadata not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/metadata', productController.getMetadataByUri);
+
+/**
+ * @swagger
+ * /api/products/arweave/config:
+ *   get:
+ *     summary: Get Arweave/Irys configuration
+ *     description: Get information about Arweave wallet configuration, Irys settings, and upload cost estimates
+ *     tags: [Products]
+ *     responses:
+ *       200:
+ *         description: Configuration retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Arweave configuration retrieved"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     arweaveWallet:
+ *                       type: object
+ *                       properties:
+ *                         address:
+ *                           type: string
+ *                           example: "i1my-YLe7oes8B9244h6SY-UgFwtJ0E3xUmbrHZHAB4"
+ *                         isConfigured:
+ *                           type: boolean
+ *                           example: true
+ *                         explorerLink:
+ *                           type: string
+ *                           example: "https://viewblock.io/arweave/address/i1my-YLe7oes8B9244h6SY-UgFwtJ0E3xUmbrHZHAB4"
+ *                     irysConfig:
+ *                       type: object
+ *                       properties:
+ *                         network:
+ *                           type: string
+ *                           example: "devnet"
+ *                         endpoint:
+ *                           type: string
+ *                           example: "https://devnet.irys.xyz"
+ *                         paymentToken:
+ *                           type: string
+ *                           example: "SOL"
+ *                     estimatedCosts:
+ *                       type: object
+ *                       properties:
+ *                         metadataUpload:
+ *                           type: object
+ *                           properties:
+ *                             sizeKB:
+ *                               type: number
+ *                               example: 2
+ *                             costSOL:
+ *                               type: number
+ *                               example: 0.00001
+ *                             note:
+ *                               type: string
+ *                               example: "Typical NFT metadata (JSON)"
+ *                         imageUpload:
+ *                           type: object
+ *                           properties:
+ *                             sizeKB:
+ *                               type: number
+ *                               example: 500
+ *                             costSOL:
+ *                               type: number
+ *                               example: 0.0025
+ *                             note:
+ *                               type: string
+ *                               example: "Typical product image (500KB)"
+ *                     fundingInfo:
+ *                       type: object
+ *                       properties:
+ *                         message:
+ *                           type: string
+ *                         devnetUrl:
+ *                           type: string
+ *                         mainnetUrl:
+ *                           type: string
+ *       500:
+ *         description: Server error
+ */
+router.get('/arweave/config', productController.getArweaveConfig);
+
 export default router;
