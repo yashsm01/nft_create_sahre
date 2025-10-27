@@ -155,7 +155,8 @@ router.post('/', productController.createProduct);
  * @swagger
  * /api/products/{id}:
  *   put:
- *     summary: Update product
+ *     summary: Update product (database + blockchain NFT)
+ *     description: Updates product in database and optionally updates its NFT on blockchain if NFT exists
  *     tags: [Products]
  *     parameters:
  *       - in: path
@@ -164,17 +165,122 @@ router.post('/', productController.createProduct);
  *         schema:
  *           type: string
  *         description: Product UUID
+ *         example: "6c07c210-4400-4176-aaee-a44bdd5e0b95"
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             properties:
+ *               productName:
+ *                 type: string
+ *                 description: Product name (database)
+ *                 example: "Updated Model-X Pro"
+ *               company:
+ *                 type: string
+ *                 description: Company name (database)
+ *               category:
+ *                 type: string
+ *                 description: Product category (database)
+ *               description:
+ *                 type: string
+ *                 description: Product description (database + NFT metadata)
+ *                 example: "Enhanced version with new features"
+ *               model:
+ *                 type: string
+ *                 description: Product model (database)
+ *               gtin:
+ *                 type: string
+ *                 description: GTIN barcode (database)
+ *               specifications:
+ *                 type: object
+ *                 description: Product specifications (database)
+ *               warrantyMonths:
+ *                 type: integer
+ *                 description: Warranty period (database)
+ *               imageUrl:
+ *                 type: string
+ *                 description: Product image URL (database + NFT metadata)
+ *                 example: "https://example.com/updated-image.jpg"
+ *               isActive:
+ *                 type: boolean
+ *                 description: Active status (database)
+ *               nftName:
+ *                 type: string
+ *                 description: NFT name on blockchain (max 32 chars)
+ *                 example: "Updated NFT Name"
+ *               nftSymbol:
+ *                 type: string
+ *                 description: NFT symbol on blockchain (max 10 chars)
+ *                 example: "UPROD"
+ *               sellerFeeBasisPoints:
+ *                 type: integer
+ *                 description: Royalty percentage (500 = 5%) - blockchain
+ *                 example: 500
+ *               primarySaleHappened:
+ *                 type: boolean
+ *                 description: Primary sale status - blockchain
+ *               isMutable:
+ *                 type: boolean
+ *                 description: Whether NFT can be updated again - blockchain
+ *           examples:
+ *             updateDatabaseOnly:
+ *               summary: Update database fields only
+ *               value:
+ *                 productName: "Updated Model-X Pro"
+ *                 description: "Enhanced version"
+ *                 warrantyMonths: 36
+ *             updateDatabaseAndNFT:
+ *               summary: Update database + blockchain NFT
+ *               value:
+ *                 productName: "Updated Model-X Pro Gen 2"
+ *                 description: "Second generation professional laptop"
+ *                 imageUrl: "https://example.com/gen2.jpg"
+ *                 nftName: "Model-X Pro Gen 2"
+ *                 nftSymbol: "MXPG2"
+ *                 sellerFeeBasisPoints: 500
+ *             updateNFTOnly:
+ *               summary: Update only blockchain NFT fields
+ *               value:
+ *                 nftName: "Renamed Product NFT"
+ *                 nftSymbol: "RPNFT"
+ *                 sellerFeeBasisPoints: 750
  *     responses:
  *       200:
  *         description: Product updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                   example: "Product and NFT updated successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     product:
+ *                       type: object
+ *                       description: Updated product from database
+ *                     blockchain:
+ *                       type: object
+ *                       description: NFT update results (null if no NFT updated)
+ *                       properties:
+ *                         nftMintAddress:
+ *                           type: string
+ *                         explorerLink:
+ *                           type: string
+ *                         updatedFields:
+ *                           type: array
+ *                           items:
+ *                             type: string
  *       404:
  *         description: Product not found
+ *       500:
+ *         description: Server error
  */
 router.put('/:id', productController.updateProduct);
 

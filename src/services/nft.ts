@@ -158,7 +158,7 @@ export async function updateNFT(
     const metadataUri = await umi.uploader.uploadJson({
       name: updateData.name || nft.name,
       symbol: updateData.symbol || nft.symbol,
-      description: nft.description || "",
+      description: (nft as any).description || "",
       image: imageUri,
       sellerFeeBasisPoints:
         updateData.sellerFeeBasisPoints !== undefined

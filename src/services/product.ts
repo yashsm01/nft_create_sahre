@@ -10,11 +10,14 @@ import {
   generateSigner,
   percentAmount,
   publicKey as createPublicKey,
+  publicKey,
 } from "@metaplex-foundation/umi";
 import {
   createNft,
   createV1,
   TokenStandard,
+  fetchMetadataFromSeeds,
+  updateV1,
 } from "@metaplex-foundation/mpl-token-metadata";
 import fs from "fs";
 import {
@@ -164,6 +167,144 @@ export async function createProductMasterNFT(
     productNft: productMint.publicKey,
     explorerLink,
     metadataUri,
+  };
+}
+
+/**
+ * Update Product Master NFT metadata
+ * 
+ * Updates the Product Master NFT on blockchain with new metadata
+ */
+export async function updateProductMasterNFT(
+  umi: Umi,
+  nftMintAddress: string,
+  currentMetadataUri: string,
+  updateData: {
+    name?: string;
+    symbol?: string;
+    description?: string;
+    imageUrl?: string;
+    sellerFeeBasisPoints?: number;
+    primarySaleHappened?: boolean;
+    isMutable?: boolean;
+  },
+  cluster: "devnet" | "testnet" | "mainnet-beta"
+): Promise<{
+  success: boolean;
+  metadataUri?: string;
+  explorerLink: string;
+  updatedFields: string[];
+}> {
+  console.log(`\n🔄 Updating Product Master NFT: ${nftMintAddress}`);
+
+  const mint = publicKey(nftMintAddress);
+
+  // Fetch current NFT metadata from blockchain
+  const nftMetadata = await fetchMetadataFromSeeds(umi, { mint });
+
+  // Prepare update fields
+  const updatedFields: string[] = [];
+  const onChainUpdate: any = {};
+
+  // Update on-chain fields
+  if (updateData.name) {
+    onChainUpdate.name = updateData.name;
+    updatedFields.push('name');
+  }
+
+  if (updateData.symbol) {
+    onChainUpdate.symbol = updateData.symbol;
+    updatedFields.push('symbol');
+  }
+
+  if (updateData.sellerFeeBasisPoints !== undefined) {
+    onChainUpdate.sellerFeeBasisPoints = updateData.sellerFeeBasisPoints;
+    updatedFields.push('sellerFeeBasisPoints');
+  }
+
+  // Handle metadata URI update if description or imageUrl changes
+  let newMetadataUri = currentMetadataUri;
+  if (updateData.description || updateData.imageUrl) {
+    console.log(`📤 Fetching current metadata from: ${nftMetadata.uri}`);
+
+    let currentMetadata: any = {};
+
+    try {
+      // Try to fetch the current metadata JSON from URI
+      const metadataUrl = nftMetadata.uri.replace('arweave.net', 'arweave.net');
+      const response = await fetch(metadataUrl, {
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.warn(`⚠️  Failed to fetch metadata (${response.status}), creating new metadata from scratch`);
+      } else {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          currentMetadata = await response.json();
+        } else {
+          console.warn(`⚠️  Metadata URL returned non-JSON content, creating new metadata from scratch`);
+        }
+      }
+    } catch (error: any) {
+      console.warn(`⚠️  Error fetching current metadata: ${error.message}`);
+      console.log(`📝 Creating new metadata from scratch`);
+    }
+
+    // Merge with new data (use on-chain data as fallback)
+    const newMetadata = {
+      name: updateData.name || currentMetadata.name || nftMetadata.name,
+      symbol: updateData.symbol || currentMetadata.symbol || nftMetadata.symbol,
+      description: updateData.description || currentMetadata.description || '',
+      image: updateData.imageUrl || currentMetadata.image || '',
+      attributes: currentMetadata.attributes || [],
+      properties: currentMetadata.properties || {},
+    };
+
+    // Upload new metadata
+    console.log(`📤 Uploading updated metadata...`);
+    newMetadataUri = await umi.uploader.uploadJson(newMetadata);
+    onChainUpdate.uri = newMetadataUri;
+    updatedFields.push('uri');
+
+    console.log(`✅ New metadata uploaded: ${newMetadataUri}`);
+  }
+
+  // Update NFT on blockchain
+  console.log(`🔨 Updating on-chain metadata...`);
+
+  await updateV1(umi, {
+    mint,
+    authority: umi.identity,
+    data: {
+      name: onChainUpdate.name || nftMetadata.name,
+      symbol: onChainUpdate.symbol || nftMetadata.symbol,
+      uri: onChainUpdate.uri || nftMetadata.uri,
+      sellerFeeBasisPoints:
+        onChainUpdate.sellerFeeBasisPoints !== undefined
+          ? onChainUpdate.sellerFeeBasisPoints
+          : nftMetadata.sellerFeeBasisPoints,
+      creators: nftMetadata.creators,
+    },
+    primarySaleHappened:
+      updateData.primarySaleHappened ?? nftMetadata.primarySaleHappened,
+    isMutable:
+      updateData.isMutable ?? nftMetadata.isMutable,
+  }).sendAndConfirm(umi);
+
+  const explorerLink = getExplorerLinkForAddress(mint, cluster);
+
+  console.log(`✅ Product Master NFT updated successfully!`);
+  console.log(`🔗 Explorer: ${explorerLink}`);
+  console.log(`📝 Updated fields: ${updatedFields.join(', ')}`);
+
+  return {
+    success: true,
+    metadataUri: newMetadataUri,
+    explorerLink,
+    updatedFields,
   };
 }
 

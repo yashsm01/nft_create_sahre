@@ -5,7 +5,7 @@
 
 import { Request, Response } from 'express';
 import { Product, Batch } from '../models';
-import { createProductMasterNFT } from '../../src/services/product';
+import { createProductMasterNFT, updateProductMasterNFT } from '../../src/services/product';
 import { createUmiInstance } from '../../src/utils/umi';
 import { loadKeypair } from '../../src/utils/helpers';
 
@@ -199,12 +199,30 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
 };
 
 /**
- * Update product
+ * Update product (database + blockchain NFT)
  */
 export const updateProduct = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const {
+      // Database fields
+      gtin,
+      productName,
+      company,
+      category,
+      description,
+      model,
+      specifications,
+      warrantyMonths,
+      imageUrl,
+      isActive,
+      // NFT-specific fields
+      nftName,
+      nftSymbol,
+      sellerFeeBasisPoints,
+      primarySaleHappened,
+      isMutable,
+    } = req.body;
 
     const product = await Product.findByPk(id);
 
@@ -216,18 +234,84 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Don't allow ID or NFT field changes
-    delete updates.id;
-    delete updates.nftMintAddress;
-    delete updates.nftMetadataUri;
-    delete updates.nftExplorerLink;
+    // Prepare database updates
+    const dbUpdates: any = {};
+    if (gtin !== undefined) dbUpdates.gtin = gtin;
+    if (productName !== undefined) dbUpdates.productName = productName;
+    if (company !== undefined) dbUpdates.company = company;
+    if (category !== undefined) dbUpdates.category = category;
+    if (description !== undefined) dbUpdates.description = description;
+    if (model !== undefined) dbUpdates.model = model;
+    if (specifications !== undefined) dbUpdates.specifications = specifications;
+    if (warrantyMonths !== undefined) dbUpdates.warrantyMonths = warrantyMonths;
+    if (imageUrl !== undefined) dbUpdates.imageUrl = imageUrl;
+    if (isActive !== undefined) dbUpdates.isActive = isActive;
 
-    await product.update(updates);
+    // Update database
+    await product.update(dbUpdates);
+
+    let nftUpdateResult: { success: boolean; metadataUri?: string; explorerLink: string; updatedFields: string[]; } | null = null;
+
+    // If product has NFT and NFT fields are provided, update blockchain
+    if (product.nftMintAddress && (nftName || nftSymbol || description || imageUrl || sellerFeeBasisPoints !== undefined || primarySaleHappened !== undefined || isMutable !== undefined)) {
+      try {
+        console.log(`\n🔄 Updating Product NFT on blockchain...`);
+        console.log(`Product: ${product.productName}`);
+        console.log(`NFT Address: ${product.nftMintAddress}`);
+
+        // Initialize Umi
+        const keypair = await loadKeypair();
+        const rpcEndpoint = process.env.SOLANA_RPC_ENDPOINT || 'https://api.devnet.solana.com';
+        const umi = createUmiInstance(rpcEndpoint, keypair);
+        const cluster = (process.env.SOLANA_CLUSTER as "devnet" | "testnet" | "mainnet-beta") || "devnet";
+
+        // Call service function to update NFT
+        nftUpdateResult = await updateProductMasterNFT(
+          umi,
+          product.nftMintAddress,
+          product.nftMetadataUri || '',
+          {
+            name: nftName,
+            symbol: nftSymbol,
+            description,
+            imageUrl,
+            sellerFeeBasisPoints,
+            primarySaleHappened,
+            isMutable,
+          },
+          cluster
+        );
+
+        // Update product record if metadata URI changed
+        if (nftUpdateResult && nftUpdateResult.metadataUri && nftUpdateResult.metadataUri !== product.nftMetadataUri) {
+          await product.update({
+            nftMetadataUri: nftUpdateResult.metadataUri,
+            nftExplorerLink: nftUpdateResult.explorerLink,
+          });
+          // Reload to get latest data
+          await product.reload();
+        }
+
+        console.log(`✅ Product and NFT updated successfully`);
+      } catch (nftError: any) {
+        console.error('⚠️  Failed to update NFT (database updated):', nftError.message);
+        // Continue - database is updated, NFT update failed
+      }
+    }
 
     res.status(200).json({
       success: true,
-      message: 'Product updated successfully',
-      data: product,
+      message: nftUpdateResult
+        ? 'Product and NFT updated successfully'
+        : 'Product updated successfully',
+      data: {
+        product,
+        blockchain: nftUpdateResult ? {
+          nftMintAddress: product.nftMintAddress,
+          explorerLink: nftUpdateResult?.explorerLink || product.nftExplorerLink,
+          updatedFields: nftUpdateResult?.updatedFields || [],
+        } : null,
+      },
     });
   } catch (error: any) {
     console.error('Error updating product:', error);
@@ -253,6 +337,7 @@ export const deactivateProduct = async (req: Request, res: Response): Promise<vo
         success: false,
         message: 'Product not found',
       });
+
       return;
     }
 
